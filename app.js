@@ -69,7 +69,9 @@ const state = {
   profile: createDefaultProfile(),
   lastReward: null,
   battlePickA: null,
-  battleEnemyId: null,
+  battlePickB: null,
+  battleSelecting: "A",
+  battleTurn: "A",
   battleStarted: false,
   battlePlayerHp: 100,
   battleEnemyHp: 100,
@@ -1021,7 +1023,9 @@ function evolveCreature(id) {
 function openBattle() {
   const owned = getOwnedCreatures();
   state.battlePickA = owned[0]?.id || null;
-  state.battleEnemyId = pickShadowCreature()?.id || null;
+  state.battlePickB = owned[1]?.id || owned[0]?.id || null;
+  state.battleSelecting = "A";
+  state.battleTurn = "A";
   state.battleStarted = false;
   state.battlePlayerHp = 100;
   state.battleEnemyHp = 100;
@@ -1034,8 +1038,10 @@ function openBattle() {
 
 function renderBattle() {
   const owned = getOwnedCreatures();
-  renderBattleCard(els.playerACard, state.battlePickA, "我的星宠");
-  renderBattleCard(els.playerBCard, state.battleEnemyId, "暗影星宠", true);
+  renderBattleCard(els.playerACard, state.battlePickA, "玩家 A");
+  renderBattleCard(els.playerBCard, state.battlePickB, "玩家 B");
+  els.playerACard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "A");
+  els.playerBCard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "B");
   els.battleResult.classList.add("hidden");
   els.battleMathPanel.classList.toggle("hidden", !state.battleStarted);
   els.battlePicker.classList.toggle("hidden", state.battleStarted);
@@ -1065,7 +1071,7 @@ function renderBattle() {
   if (state.battleStarted) renderBattleQuestion();
 }
 
-function renderBattleCard(element, creatureId, fallback, shadow = false) {
+function renderBattleCard(element, creatureId, fallback) {
   const creature = creatures.find((item) => item.id === creatureId);
   if (!creature) {
     element.className = "battle-pick empty";
@@ -1073,10 +1079,10 @@ function renderBattleCard(element, creatureId, fallback, shadow = false) {
     return;
   }
 
-  element.className = `battle-pick rarity-${creature.rarity}${shadow ? " shadow" : ""}`;
+  element.className = `battle-pick rarity-${creature.rarity}`;
   element.innerHTML = `
     <img src="${creatureImage(creature)}" alt="${creature.name}" />
-    <strong>${shadow ? `暗影${creature.name}` : evolvedName(creature, state.profile.creatureEvolution[creature.id] || 0)}</strong>
+    <strong>${evolvedName(creature, state.profile.creatureEvolution[creature.id] || 0)}</strong>
     <span>${fallback} · ${creature.label}</span>
   `;
 }
@@ -1086,10 +1092,11 @@ function runBattle() {
 }
 
 function startMathBattle() {
-  const player = creatures.find((creature) => creature.id === state.battlePickA);
-  if (!player) return;
-  state.battleEnemyId = state.battleEnemyId || pickShadowCreature()?.id;
+  const playerA = creatures.find((creature) => creature.id === state.battlePickA);
+  const playerB = creatures.find((creature) => creature.id === state.battlePickB);
+  if (!playerA || !playerB) return;
   state.battleStarted = true;
+  state.battleTurn = "A";
   state.battlePlayerHp = 100;
   state.battleEnemyHp = 100;
   state.battleTurns = 0;
@@ -1108,9 +1115,10 @@ function nextBattleQuestion() {
 }
 
 function renderBattleQuestion() {
-  const player = creatures.find((creature) => creature.id === state.battlePickA);
-  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
-  els.battleHpLabel.textContent = `${player?.name || "我方"} vs 暗影${enemy?.name || "星宠"}`;
+  const playerA = creatures.find((creature) => creature.id === state.battlePickA);
+  const playerB = creatures.find((creature) => creature.id === state.battlePickB);
+  const attacker = state.battleTurn === "A" ? playerA : playerB;
+  els.battleHpLabel.textContent = `轮到玩家 ${state.battleTurn}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
   els.battlePlayerHp.style.width = `${state.battlePlayerHp}%`;
   els.battleEnemyHp.style.width = `${state.battleEnemyHp}%`;
   els.battleQuestionText.textContent = state.battleQuestion?.text || "";
@@ -1135,9 +1143,13 @@ function handleBattleKey(key) {
 
 function submitBattleAnswer() {
   if (!state.battleStarted || !state.battleAnswer || !state.battleQuestion) return;
-  const player = creatures.find((creature) => creature.id === state.battlePickA);
-  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
-  if (!player || !enemy) return;
+  const playerA = creatures.find((creature) => creature.id === state.battlePickA);
+  const playerB = creatures.find((creature) => creature.id === state.battlePickB);
+  if (!playerA || !playerB) return;
+  const attackerSide = state.battleTurn;
+  const defenderSide = attackerSide === "A" ? "B" : "A";
+  const attacker = attackerSide === "A" ? playerA : playerB;
+  const defender = attackerSide === "A" ? playerB : playerA;
 
   const answer = Number(state.battleAnswer);
   const correct = answer === state.battleQuestion.answer;
@@ -1145,49 +1157,57 @@ function submitBattleAnswer() {
   state.battleTurns += 1;
 
   if (correct) {
-    const damage = battleDamage(player, enemy, time, state.battleQuestion.difficulty);
-    state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
-    showBattleMessage(`答对了，造成 ${damage} 点净化伤害。`);
+    const damage = battleDamage(attacker, defender, time, state.battleQuestion.difficulty);
+    if (defenderSide === "A") state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
+    else state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
+    showBattleMessage(`玩家 ${attackerSide} 答对了，造成 ${damage} 点攻击。`, "算得越难、越准、越快，星宠攻击越强。");
   } else {
-    const damage = shadowDamage(enemy, player);
-    state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
-    showBattleMessage(`差一点，答案是 ${state.battleQuestion.answer}。暗影反击 ${damage} 点。`);
+    const damage = counterDamage(defender, attacker);
+    if (attackerSide === "A") state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
+    else state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
+    showBattleMessage(`玩家 ${attackerSide} 答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`, "认真计算可以保护自己的星宠。");
   }
 
-  if (state.battleEnemyHp <= 0) return finishPurifyBattle(true, correct, time);
-  if (state.battlePlayerHp <= 0) return finishPurifyBattle(false, correct, time);
+  if (state.battleEnemyHp <= 0) return finishFriendBattle("A", correct, time);
+  if (state.battlePlayerHp <= 0) return finishFriendBattle("B", correct, time);
+  state.battleTurn = defenderSide;
   nextBattleQuestion();
   renderBattleQuestion();
 }
 
-function showBattleMessage(message) {
+function showBattleMessage(message, detail = "下一位选手继续答题。") {
   els.battleResult.className = "battle-result";
-  els.battleResult.innerHTML = `<div><h3>${message}</h3><p>继续答题来推进净化。</p></div>`;
+  els.battleResult.innerHTML = `<div><h3>${message}</h3><p>${detail}</p></div>`;
 }
 
-function finishPurifyBattle(won, correct, time) {
-  const player = creatures.find((creature) => creature.id === state.battlePickA);
-  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
+function finishFriendBattle(winnerSide, correct, time) {
+  const playerA = creatures.find((creature) => creature.id === state.battlePickA);
+  const playerB = creatures.find((creature) => creature.id === state.battlePickB);
+  const winner = winnerSide === "A" ? playerA : playerB;
+  const loser = winnerSide === "A" ? playerB : playerA;
+  if (!winner || !loser) return;
   state.battleStarted = false;
   const difficulty = state.battleQuestion?.difficulty || state.targetDifficulty;
-  const performance = getBattlePerformance(won, correct, time, difficulty);
-  if (won && enemy) purifyCreature(enemy, performance);
+  const performance = getBattlePerformance(true, correct, time, difficulty);
+  const energy = 4 + Math.round(performance * 10);
+  state.profile.creatureEnergy[winner.id] = (state.profile.creatureEnergy[winner.id] || 0) + energy;
+  saveProfile();
+  renderBattle();
 
-  els.battleResult.className = `battle-result ${won ? `rarity-${enemy.rarity}` : ""}`;
+  els.battleResult.className = `battle-result rarity-${winner.rarity}`;
   els.battleResult.innerHTML = `
     <div class="creature-avatar">
-      <img src="${creatureImage(won ? enemy : player)}" alt="${won ? enemy.name : player.name}" />
+      <img src="${creatureImage(winner)}" alt="${winner.name}" />
     </div>
     <div>
-      <h3>${won ? `净化成功：${enemy.name}` : "净化失败，再挑战一次"}</h3>
-      <p>${won ? `获得净化能量。算得越难、越准、越快，越容易把暗影星宠加入图鉴。` : `换一道更适合的题继续练，星宠不会失去能量。`}</p>
+      <h3>玩家 ${winnerSide} 获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
+      <p>胜者获得 ${energy} 点进化能量。对战攻击力由题目难度、答题速度、属性克制和星宠进化共同决定。</p>
       <div class="battle-score">
         <span>难度：${Math.round(difficulty)}</span>
         <span>表现：${Math.round(performance * 100)}%</span>
       </div>
     </div>
   `;
-  renderBattle();
 }
 
 function battleDamage(player, enemy, time, difficulty) {
@@ -1198,7 +1218,7 @@ function battleDamage(player, enemy, time, difficulty) {
   return 18 + difficultyBonus + speedBonus + evolutionBonus + element;
 }
 
-function shadowDamage(enemy, player) {
+function counterDamage(enemy, player) {
   return 12 + Math.round(({ common: 2, rare: 6, epic: 10, legendary: 14 }[enemy.rarity] || 2) / 2) + Math.round(elementBonus(enemy.element, player.element) / 2);
 }
 
@@ -1207,27 +1227,6 @@ function getBattlePerformance(won, correct, time, difficulty) {
   const difficultyScore = clamp((difficulty - profile.min) / Math.max(1, profile.max - profile.min), 0, 1);
   const speedScore = clamp((18 - time) / 14, 0, 1);
   return (won ? 0.35 : 0) + (correct ? 0.25 : 0) + difficultyScore * 0.25 + speedScore * 0.15;
-}
-
-function purifyCreature(enemy, performance) {
-  const energy = 3 + Math.round(performance * 10);
-  state.profile.creatureEnergy[enemy.id] = (state.profile.creatureEnergy[enemy.id] || 0) + energy;
-  const catchChance = Math.min(0.72, 0.12 + performance * 0.48);
-  if (!state.profile.collection.includes(enemy.id) && Math.random() < catchChance) {
-    state.profile.collection.push(enemy.id);
-  }
-  saveProfile();
-}
-
-function pickShadowCreature() {
-  const score = state.profile.abilityScore || 0;
-  const pool = creatures.filter((creature) => {
-    if (score < 40) return creature.rarity === "common";
-    if (score < 75) return ["common", "rare"].includes(creature.rarity);
-    if (score < 115) return ["rare", "epic"].includes(creature.rarity);
-    return true;
-  });
-  return pick(pool.length ? pool : creatures);
 }
 
 function battleScore(creature, opponent) {
@@ -1543,22 +1542,27 @@ function bindEvents() {
 
   els.playerACard.addEventListener("click", () => {
     if (state.battleStarted) return;
-    els.playerACard.classList.add("selecting");
-    els.playerBCard.classList.remove("selecting");
+    state.battleSelecting = "A";
+    renderBattle();
   });
 
   els.playerBCard.addEventListener("click", () => {
     if (state.battleStarted) return;
-    state.battleEnemyId = pickShadowCreature()?.id || state.battleEnemyId;
+    state.battleSelecting = "B";
     renderBattle();
   });
 
   els.battlePicker.addEventListener("click", (event) => {
     const button = event.target.closest("[data-creature]");
     if (!button) return;
-    state.battlePickA = button.dataset.creature;
+    if (state.battleSelecting === "A") {
+      state.battlePickA = button.dataset.creature;
+      state.battleSelecting = "B";
+    } else {
+      state.battlePickB = button.dataset.creature;
+      state.battleSelecting = "A";
+    }
     renderBattle();
-    els.playerACard.classList.add("selecting");
   });
 
   els.startBattleButton.addEventListener("click", runBattle);

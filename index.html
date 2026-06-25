@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>数学星球 Demo</title>
-    <link rel="stylesheet" href="./styles.css?v=20260625-pve-battle" />
+    <link rel="stylesheet" href="./styles.css?v=20260625-friend-battle" />
   </head>
   <body>
     <main id="app" class="app">
@@ -148,27 +148,27 @@
       <section id="battleScreen" class="screen battle-screen hidden">
         <header class="topbar">
           <button id="battleBackButton" class="ghost-button">返回</button>
-          <div class="status-pill">人机对战</div>
+          <div class="status-pill">好友对战</div>
         </header>
         <section class="panel battle-hero">
-          <p class="section-kicker">净化挑战</p>
-          <h2>用计算净化暗影星宠</h2>
-          <p>选择一只星宠，答题攻击暗影星宠。题越难、越准确、越快，攻击越强。</p>
+          <p class="section-kicker">同屏计算对战</p>
+          <h2>谁算得快，谁的星宠更强</h2>
+          <p>两位选手各选一只星宠，轮流答题攻击。答得越准越快，攻击力越大。</p>
         </section>
         <section class="battle-arena">
           <div class="battle-slot">
-            <span>我的星宠</span>
+            <span>玩家 A</span>
             <div id="playerACard" class="battle-pick empty">选择星宠</div>
           </div>
           <div class="versus">VS</div>
           <div class="battle-slot">
-            <span>暗影星宠</span>
-            <div id="playerBCard" class="battle-pick empty">等待挑战</div>
+            <span>玩家 B</span>
+            <div id="playerBCard" class="battle-pick empty">选择星宠</div>
           </div>
         </section>
         <section id="battleMathPanel" class="battle-math hidden">
           <div>
-            <span id="battleHpLabel">净化进度</span>
+            <span id="battleHpLabel">轮到玩家 A</span>
             <div class="battle-hp">
               <span id="battlePlayerHp"></span>
               <span id="battleEnemyHp"></span>
@@ -177,14 +177,14 @@
           <div id="battleQuestionText" class="battle-question">8 + 7 = ?</div>
           <div id="battleAnswerDisplay" class="answer-display battle-answer">_</div>
           <div id="battleKeypad" class="keypad"></div>
-          <button id="battleSubmitButton" class="primary-button submit-button">攻击</button>
+          <button id="battleSubmitButton" class="primary-button submit-button">答题攻击</button>
         </section>
         <section id="battlePicker" class="battle-picker"></section>
-        <button id="startBattleButton" class="primary-button">开始净化</button>
+        <button id="startBattleButton" class="primary-button">开始对战</button>
         <section id="battleResult" class="battle-result hidden"></section>
       </section>
     </main>
 
-    <script src="./app.js?v=20260625-pve-battle"></script>
+    <script src="./app.js?v=20260625-friend-battle"></script>
   </body>
 </html>
