@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>数学星球 Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <section id="setupScreen" class="screen setup-screen">
+        <div class="brand">
+          <span class="planet">★</span>
+          <div>
+            <p class="eyebrow">自适应计算练习</p>
+            <h1>数学星球</h1>
+          </div>
+        </div>
+
+        <section class="panel player-panel">
+          <div class="section-heading">
+            <h2>谁来挑战？</h2>
+            <span id="profileSummary">还没有挑战记录</span>
+          </div>
+          <div class="player-row">
+            <input id="playerNameInput" class="player-input" maxlength="12" placeholder="输入小朋友昵称" />
+            <button id="saveProfileButton" class="small-button">保存</button>
+          </div>
+          <div id="collectionPreview" class="collection-preview"></div>
+        </section>
+
+        <div class="setup-grid">
+          <section class="panel">
+            <h2>选择年级</h2>
+            <div id="gradeOptions" class="choice-grid"></div>
+          </section>
+
+          <section class="panel">
+            <h2>字体大小</h2>
+            <div id="fontOptions" class="choice-grid font-grid"></div>
+          </section>
+        </div>
+
+        <section class="panel operation-panel">
+          <div class="section-heading">
+            <h2>选择题型</h2>
+            <span>可单选，也可组合；拖动可调整出现顺序</span>
+          </div>
+          <div id="operationOptions" class="operation-list"></div>
+        </section>
+
+        <section class="panel operation-panel">
+          <div class="section-heading">
+            <h2>挑战模式</h2>
+            <span>普通闯关适合练习，限时挑战适合冲分</span>
+          </div>
+          <div id="modeOptions" class="choice-grid mode-grid"></div>
+        </section>
+
+        <button id="startButton" class="primary-button">开始闯关</button>
+      </section>
+
+      <section id="practiceScreen" class="screen practice-screen hidden">
+        <header class="topbar">
+          <button id="backButton" class="ghost-button">返回</button>
+          <div class="status-pill" id="gradeLabel"></div>
+          <div class="status-pill" id="modeLabel"></div>
+          <div class="status-pill timer-pill" id="timerLabel"></div>
+        </header>
+
+        <section class="progress-area">
+          <div class="progress-copy">
+            <span id="roundLabel">探测题 1/2</span>
+            <strong id="skillLabel">快速找到适合你的难度</strong>
+          </div>
+          <div class="progress-track">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </section>
+
+        <section class="question-card">
+          <p id="encourageText" class="encourage">先来一题试试</p>
+          <div id="questionText" class="question-text">8 + 7 = ?</div>
+          <div id="answerDisplay" class="answer-display">_</div>
+          <p id="feedbackText" class="feedback"></p>
+        </section>
+
+        <section class="answer-tools">
+          <button id="voiceButton" class="voice-button">按一下，说答案</button>
+          <div id="speechHint" class="speech-hint">也可以直接点数字</div>
+          <div id="keypad" class="keypad"></div>
+          <button id="submitButton" class="primary-button submit-button">确定</button>
+        </section>
+      </section>
+
+      <section id="resultScreen" class="screen result-screen hidden">
+        <div class="result-hero">
+          <p class="eyebrow">本轮完成</p>
+          <h2 id="resultTitle">三星通关</h2>
+          <div id="stars" class="stars"></div>
+          <p id="resultSummary"></p>
+        </div>
+
+        <div class="result-grid">
+          <div>
+            <span>正确率</span>
+            <strong id="accuracyValue">90%</strong>
+          </div>
+          <div>
+            <span>平均用时</span>
+            <strong id="timeValue">8 秒</strong>
+          </div>
+          <div>
+            <span>下一步</span>
+            <strong id="nextAction">进入下一关</strong>
+          </div>
+        </div>
+
+        <section id="rewardCard" class="reward-card"></section>
+
+        <button id="continueButton" class="primary-button">继续玩</button>
+        <button id="homeButton" class="ghost-button wide">重新选择</button>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
