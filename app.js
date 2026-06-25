@@ -1,4 +1,5 @@
 const grades = [
+  { id: 0, label: "学龄前" },
   { id: 1, label: "一年级" },
   { id: 2, label: "二年级" },
   { id: 3, label: "三年级" },
@@ -42,6 +43,7 @@ const creatures = [
 ];
 
 const gradeProfiles = {
+  0: { min: 2, start: 6, max: 14, skills: ["数数", "5以内加减", "10以内加减"] },
   1: { min: 8, start: 18, max: 34, skills: ["加法", "减法", "加减混合"] },
   2: { min: 16, start: 32, max: 52, skills: ["加减", "乘法", "除法", "乘加乘减"] },
   3: { min: 28, start: 48, max: 68, skills: ["多位数", "乘除", "两步混合", "有余数除法"] },
@@ -474,6 +476,8 @@ function generateQuestion(grade, difficulty) {
 }
 
 function getSkillPool(grade, difficulty) {
+  if (grade === 0) return [makeAddition, makeSubtraction];
+
   const selected = state.operationOrder.filter((op) => state.selectedOps.has(op));
   const catalog = [
     { op: "add", minGrade: 1, minDifficulty: 0, generator: makeAddition },
@@ -505,14 +509,14 @@ function getSkillPool(grade, difficulty) {
 function makeAddition(difficulty, grade) {
   const band = numberBand(grade, difficulty);
   const a = rand(band.min, band.max);
-  const b = rand(band.min, band.max);
+  const b = rand(grade === 0 ? 0 : band.min, band.max);
   return { text: `${a} + ${b} = ?`, answer: a + b, skill: "加法" };
 }
 
 function makeSubtraction(difficulty, grade) {
   const band = numberBand(grade, difficulty);
-  const a = rand(Math.max(band.min + 2, Math.floor(band.max * 0.45)), band.max);
-  const b = rand(band.min, Math.max(band.min, a - 1));
+  const a = rand(Math.max(band.min + 1, Math.floor(band.max * 0.45)), band.max);
+  const b = rand(grade === 0 ? 0 : band.min, Math.max(grade === 0 ? 0 : band.min, a - 1));
   return { text: `${a} - ${b} = ?`, answer: a - b, skill: "减法" };
 }
 
@@ -1110,6 +1114,12 @@ function raritySparkles(rarity) {
 }
 
 function numberBand(grade, difficulty) {
+  if (grade === 0) {
+    if (difficulty < 6) return { min: 1, max: 5 };
+    if (difficulty < 10) return { min: 1, max: 8 };
+    return { min: 1, max: 10 };
+  }
+
   if (grade <= 1) {
     if (difficulty < 18) return { min: 1, max: 10 };
     if (difficulty < 26) return { min: 8, max: 20 };
