@@ -58,6 +58,9 @@ const state = {
   selectedMode: "round",
   profile: createDefaultProfile(),
   lastReward: null,
+  battlePickA: null,
+  battlePickB: null,
+  battleSelecting: "A",
   phase: "setup",
   probeIndex: 0,
   roundIndex: 0,
@@ -78,10 +81,23 @@ const els = {
   setupScreen: document.querySelector("#setupScreen"),
   practiceScreen: document.querySelector("#practiceScreen"),
   resultScreen: document.querySelector("#resultScreen"),
+  collectionScreen: document.querySelector("#collectionScreen"),
+  battleScreen: document.querySelector("#battleScreen"),
   playerNameInput: document.querySelector("#playerNameInput"),
   saveProfileButton: document.querySelector("#saveProfileButton"),
+  collectionButton: document.querySelector("#collectionButton"),
+  battleButton: document.querySelector("#battleButton"),
+  collectionBackButton: document.querySelector("#collectionBackButton"),
+  battleBackButton: document.querySelector("#battleBackButton"),
   profileSummary: document.querySelector("#profileSummary"),
   collectionPreview: document.querySelector("#collectionPreview"),
+  collectionTitle: document.querySelector("#collectionTitle"),
+  collectionGrid: document.querySelector("#collectionGrid"),
+  playerACard: document.querySelector("#playerACard"),
+  playerBCard: document.querySelector("#playerBCard"),
+  battlePicker: document.querySelector("#battlePicker"),
+  startBattleButton: document.querySelector("#startBattleButton"),
+  battleResult: document.querySelector("#battleResult"),
   gradeOptions: document.querySelector("#gradeOptions"),
   fontOptions: document.querySelector("#fontOptions"),
   operationOptions: document.querySelector("#operationOptions"),
@@ -164,6 +180,8 @@ function setScreen(name) {
   els.setupScreen.classList.toggle("hidden", name !== "setup");
   els.practiceScreen.classList.toggle("hidden", name !== "practice");
   els.resultScreen.classList.toggle("hidden", name !== "result");
+  els.collectionScreen.classList.toggle("hidden", name !== "collection");
+  els.battleScreen.classList.toggle("hidden", name !== "battle");
 }
 
 function startGame() {
@@ -846,6 +864,134 @@ function renderReward(reward, accuracy) {
   `;
 }
 
+function getOwnedCreatures() {
+  return state.profile.collection
+    .map((id) => creatures.find((creature) => creature.id === id))
+    .filter(Boolean);
+}
+
+function openCollection() {
+  renderCollectionPage();
+  setScreen("collection");
+}
+
+function renderCollectionPage() {
+  const ownedIds = new Set(state.profile.collection);
+  const ownedCount = creatures.filter((creature) => ownedIds.has(creature.id)).length;
+  els.collectionTitle.textContent = `已收集 ${ownedCount} / ${creatures.length} 只`;
+  els.collectionGrid.innerHTML = creatures
+    .map((creature) => {
+      const owned = ownedIds.has(creature.id);
+      return `
+        <article class="dex-card rarity-${creature.rarity} ${owned ? "" : "locked"}">
+          <img src="${creatureImage(creature)}" alt="${creature.name}" />
+          <div>
+            <div class="dex-title">
+              <strong>${owned ? creature.name : "未遇见"}</strong>
+              <span>${creature.label}</span>
+            </div>
+            <p>${creature.element}属性 · ${creature.skill}</p>
+            <small>${owned ? creature.power : "继续闯关有机会遇见"}</small>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function openBattle() {
+  const owned = getOwnedCreatures();
+  state.battlePickA = owned[0]?.id || null;
+  state.battlePickB = owned[1]?.id || owned[0]?.id || null;
+  state.battleSelecting = "A";
+  renderBattle();
+  els.playerACard.classList.add("selecting");
+  setScreen("battle");
+}
+
+function renderBattle() {
+  const owned = getOwnedCreatures();
+  renderBattleCard(els.playerACard, state.battlePickA, "玩家 A");
+  renderBattleCard(els.playerBCard, state.battlePickB, "玩家 B");
+  els.battleResult.classList.add("hidden");
+
+  if (!owned.length) {
+    els.battlePicker.innerHTML = `
+      <div class="empty-state">
+        <strong>还没有星宠</strong>
+        <p>先完成一次练习，正确率达到 70% 就有机会获得第一只星宠。</p>
+      </div>
+    `;
+    els.startBattleButton.disabled = true;
+    return;
+  }
+
+  els.startBattleButton.disabled = false;
+  els.battlePicker.innerHTML = owned
+    .map((creature) => `
+      <button class="battle-choice rarity-${creature.rarity}" data-creature="${creature.id}">
+        <img src="${creatureImage(creature)}" alt="${creature.name}" />
+        <strong>${creature.name}</strong>
+        <span>${creature.label} · ${creature.skill}</span>
+      </button>
+    `)
+    .join("");
+}
+
+function renderBattleCard(element, creatureId, fallback) {
+  const creature = creatures.find((item) => item.id === creatureId);
+  if (!creature) {
+    element.className = "battle-pick empty";
+    element.textContent = "选择星宠";
+    return;
+  }
+
+  element.className = `battle-pick rarity-${creature.rarity}`;
+  element.innerHTML = `
+    <img src="${creatureImage(creature)}" alt="${creature.name}" />
+    <strong>${creature.name}</strong>
+    <span>${fallback} · ${creature.label}</span>
+  `;
+}
+
+function runBattle() {
+  const a = creatures.find((creature) => creature.id === state.battlePickA);
+  const b = creatures.find((creature) => creature.id === state.battlePickB);
+  if (!a || !b) return;
+
+  const scoreA = battleScore(a);
+  const scoreB = battleScore(b);
+  const winner = scoreA >= scoreB ? a : b;
+  const winnerName = scoreA >= scoreB ? "玩家 A" : "玩家 B";
+  const diff = Math.abs(scoreA - scoreB);
+
+  els.battleResult.className = `battle-result rarity-${winner.rarity}`;
+  els.battleResult.innerHTML = `
+    <div class="creature-avatar">
+      <img src="${creatureImage(winner)}" alt="${winner.name}" />
+    </div>
+    <div>
+      <h3>${winnerName} 获胜：${winner.name}</h3>
+      <p>发动技能「${winner.skill}」，战力差 ${diff}。稀有度越高基础战力越强，但随机能量也可能反转战局。</p>
+      <div class="battle-score">
+        <span>玩家 A：${scoreA}</span>
+        <span>玩家 B：${scoreB}</span>
+      </div>
+    </div>
+  `;
+}
+
+function battleScore(creature) {
+  const rarityBase = {
+    common: 30,
+    rare: 45,
+    epic: 62,
+    legendary: 78,
+  }[creature.rarity] || 30;
+  const skillBonus = creature.skill.length + creature.element.charCodeAt(0) % 8;
+  return rarityBase + skillBonus + rand(1, 30);
+}
+
 function creatureImage(creature) {
   const art = creatureArt(creature);
   const svg = `
@@ -1075,6 +1221,10 @@ function bindEvents() {
   });
 
   els.startButton.addEventListener("click", startGame);
+  els.collectionButton.addEventListener("click", openCollection);
+  els.battleButton.addEventListener("click", openBattle);
+  els.collectionBackButton.addEventListener("click", () => setScreen("setup"));
+  els.battleBackButton.addEventListener("click", () => setScreen("setup"));
   els.backButton.addEventListener("click", () => {
     stopChallengeTimer();
     setScreen("setup");
@@ -1085,6 +1235,35 @@ function bindEvents() {
     stopChallengeTimer();
     setScreen("setup");
   });
+
+  els.playerACard.addEventListener("click", () => {
+    state.battleSelecting = "A";
+    els.playerACard.classList.add("selecting");
+    els.playerBCard.classList.remove("selecting");
+  });
+
+  els.playerBCard.addEventListener("click", () => {
+    state.battleSelecting = "B";
+    els.playerBCard.classList.add("selecting");
+    els.playerACard.classList.remove("selecting");
+  });
+
+  els.battlePicker.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-creature]");
+    if (!button) return;
+    if (state.battleSelecting === "A") {
+      state.battlePickA = button.dataset.creature;
+      state.battleSelecting = "B";
+    } else {
+      state.battlePickB = button.dataset.creature;
+      state.battleSelecting = "A";
+    }
+    renderBattle();
+    if (state.battleSelecting === "A") els.playerACard.classList.add("selecting");
+    if (state.battleSelecting === "B") els.playerBCard.classList.add("selecting");
+  });
+
+  els.startBattleButton.addEventListener("click", runBattle);
 
   els.keypad.addEventListener("click", (event) => {
     const button = event.target.closest("[data-key]");

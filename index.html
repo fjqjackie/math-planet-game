@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>数学星球 Demo</title>
-    <link rel="stylesheet" href="./styles.css?v=20260625-light-mobile" />
+    <link rel="stylesheet" href="./styles.css?v=20260625-creature-battle" />
   </head>
   <body>
     <main id="app" class="app">
@@ -32,6 +32,10 @@
           <div class="player-row">
             <input id="playerNameInput" class="player-input" maxlength="12" placeholder="小朋友昵称" />
             <button id="saveProfileButton" class="small-button">保存</button>
+          </div>
+          <div class="quick-actions">
+            <button id="collectionButton" class="quick-action">我的星宠</button>
+            <button id="battleButton" class="quick-action">好友对战</button>
           </div>
         </section>
 
@@ -127,8 +131,47 @@
         <button id="continueButton" class="primary-button">继续玩</button>
         <button id="homeButton" class="ghost-button wide">重新选择</button>
       </section>
+
+      <section id="collectionScreen" class="screen collection-screen hidden">
+        <header class="topbar">
+          <button id="collectionBackButton" class="ghost-button">返回</button>
+          <div class="status-pill">我的星宠</div>
+        </header>
+        <section class="panel library-hero">
+          <p class="section-kicker">星宠图鉴</p>
+          <h2 id="collectionTitle">已收集 0 只</h2>
+          <p>通关练习会遇到新的星宠，难度越高越容易获得稀有伙伴。</p>
+        </section>
+        <section id="collectionGrid" class="creature-grid"></section>
+      </section>
+
+      <section id="battleScreen" class="screen battle-screen hidden">
+        <header class="topbar">
+          <button id="battleBackButton" class="ghost-button">返回</button>
+          <div class="status-pill">好友对战</div>
+        </header>
+        <section class="panel battle-hero">
+          <p class="section-kicker">同屏对战</p>
+          <h2>选择两只星宠</h2>
+          <p>两个小朋友各选一只星宠，系统会根据稀有度、技能和随机能量决出胜负。</p>
+        </section>
+        <section class="battle-arena">
+          <div class="battle-slot">
+            <span>玩家 A</span>
+            <div id="playerACard" class="battle-pick empty">选择星宠</div>
+          </div>
+          <div class="versus">VS</div>
+          <div class="battle-slot">
+            <span>玩家 B</span>
+            <div id="playerBCard" class="battle-pick empty">选择星宠</div>
+          </div>
+        </section>
+        <section id="battlePicker" class="battle-picker"></section>
+        <button id="startBattleButton" class="primary-button">开始对战</button>
+        <section id="battleResult" class="battle-result hidden"></section>
+      </section>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260625-creature-battle"></script>
   </body>
 </html>
