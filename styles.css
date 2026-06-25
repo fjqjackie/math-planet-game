@@ -1009,6 +1009,27 @@ h2 {
   font-weight: 900;
 }
 
+.battle-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f3f9ff;
+  color: #1849a9;
+}
+
+.battle-side.is-you {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.battle-side.is-opponent {
+  background: #fff1f3;
+  color: #c01048;
+}
+
 .battle-pick {
   display: grid;
   min-height: 160px;
@@ -1042,6 +1063,16 @@ h2 {
 .battle-pick.selecting {
   border-color: rgba(46, 144, 250, 0.65);
   background: #eff8ff;
+}
+
+.battle-pick.you {
+  border-color: rgba(2, 122, 72, 0.55);
+  background: #ecfdf3;
+}
+
+.battle-pick.opponent {
+  border-color: rgba(192, 16, 72, 0.45);
+  background: #fff1f3;
 }
 
 .battle-pick.shadow {
@@ -1102,6 +1133,24 @@ h2 {
 #battleEnemyHp {
   justify-self: start;
   background: linear-gradient(90deg, #f04438, #f79009);
+}
+
+.battle-hp-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.battle-hp-labels span.is-you {
+  color: #027a48;
+}
+
+.battle-hp-labels span.is-opponent {
+  color: #c01048;
 }
 
 .battle-question {

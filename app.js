@@ -116,6 +116,8 @@ const els = {
   collectionGrid: document.querySelector("#collectionGrid"),
   playerACard: document.querySelector("#playerACard"),
   playerBCard: document.querySelector("#playerBCard"),
+  battleSideA: document.querySelector("#battleSideA"),
+  battleSideB: document.querySelector("#battleSideB"),
   battleModeTabs: typeof document.querySelectorAll === "function" ? document.querySelectorAll("[data-battle-mode]") : [],
   remoteBattlePanel: document.querySelector("#remoteBattlePanel"),
   remotePlayerId: document.querySelector("#remotePlayerId"),
@@ -129,6 +131,8 @@ const els = {
   battleHpLabel: document.querySelector("#battleHpLabel"),
   battlePlayerHp: document.querySelector("#battlePlayerHp"),
   battleEnemyHp: document.querySelector("#battleEnemyHp"),
+  battleHpYouLabel: document.querySelector("#battleHpYouLabel"),
+  battleHpOppLabel: document.querySelector("#battleHpOppLabel"),
   battleQuestionText: document.querySelector("#battleQuestionText"),
   battleAnswerDisplay: document.querySelector("#battleAnswerDisplay"),
   battleKeypad: document.querySelector("#battleKeypad"),
@@ -1270,6 +1274,7 @@ function renderBattle() {
   renderBattleCard(els.playerBCard, state.battlePickB, "玩家 B");
   els.playerACard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "A");
   els.playerBCard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "B");
+  updateBattleIdentityLabels();
   els.battleResult.classList.add("hidden");
   els.battleMathPanel.classList.toggle("hidden", !state.battleStarted);
   els.battlePicker.classList.toggle("hidden", state.battleStarted);
@@ -1314,6 +1319,50 @@ function renderBattleCard(element, creatureId, fallback) {
     <strong>${evolvedName(creature, state.profile.creatureEvolution[creature.id] || 0)}</strong>
     <span>${fallback} · ${creature.label}</span>
   `;
+}
+
+function updateBattleIdentityLabels() {
+  const isRemote = state.battleMode !== "local";
+  const youSide = state.remoteSide || "A";
+  const otherSide = youSide === "A" ? "B" : "A";
+  if (!els.battleSideA || !els.battleSideB) return;
+
+  if (isRemote) {
+    els.battleSideA.textContent = youSide === "A" ? "你" : "对方";
+    els.battleSideB.textContent = youSide === "B" ? "你" : "对方";
+    els.battleSideA.className = `battle-side ${youSide === "A" ? "is-you" : "is-opponent"}`;
+    els.battleSideB.className = `battle-side ${youSide === "B" ? "is-you" : "is-opponent"}`;
+    const labelForA = state.battlePickA ? (youSide === "A" ? "你的星宠" : "对方的星宠") : "选择星宠";
+    const labelForB = state.battlePickB ? (youSide === "B" ? "你的星宠" : "对方的星宠") : "选择星宠";
+    els.playerACard.classList.toggle("you", youSide === "A");
+    els.playerACard.classList.toggle("opponent", youSide !== "A");
+    els.playerBCard.classList.toggle("you", youSide === "B");
+    els.playerBCard.classList.toggle("opponent", youSide !== "B");
+    if (els.battleHpYouLabel && els.battleHpOppLabel) {
+      els.battleHpYouLabel.textContent = "你";
+      els.battleHpOppLabel.textContent = "对方";
+      els.battleHpYouLabel.className = "is-you";
+      els.battleHpOppLabel.className = "is-opponent";
+    }
+    els.playerACard.dataset.sideLabel = labelForA;
+    els.playerBCard.dataset.sideLabel = labelForB;
+    if (els.playerACard.querySelector("span")) els.playerACard.querySelector("span").textContent = labelForA;
+    if (els.playerBCard.querySelector("span")) els.playerBCard.querySelector("span").textContent = labelForB;
+    return;
+  }
+
+  els.battleSideA.textContent = "玩家 A";
+  els.battleSideB.textContent = "玩家 B";
+  els.battleSideA.className = "battle-side";
+  els.battleSideB.className = "battle-side";
+  if (els.battleHpYouLabel && els.battleHpOppLabel) {
+    els.battleHpYouLabel.textContent = "玩家 A";
+    els.battleHpOppLabel.textContent = "玩家 B";
+    els.battleHpYouLabel.className = "";
+    els.battleHpOppLabel.className = "";
+  }
+  els.playerACard.classList.remove("you", "opponent");
+  els.playerBCard.classList.remove("you", "opponent");
 }
 
 function runBattle() {
@@ -1372,7 +1421,12 @@ function renderBattleQuestion() {
   const playerA = creatures.find((creature) => creature.id === state.battlePickA);
   const playerB = creatures.find((creature) => creature.id === state.battlePickB);
   const attacker = state.battleTurn === "A" ? playerA : playerB;
-  els.battleHpLabel.textContent = `轮到玩家 ${state.battleTurn}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
+  if (state.battleMode === "local") {
+    els.battleHpLabel.textContent = `轮到玩家 ${state.battleTurn}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
+  } else {
+    const currentSide = state.remoteSide === state.battleTurn ? "你" : "对方";
+    els.battleHpLabel.textContent = `轮到${currentSide}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
+  }
   els.battlePlayerHp.style.width = `${state.battlePlayerHp}%`;
   els.battleEnemyHp.style.width = `${state.battleEnemyHp}%`;
   els.battleQuestionText.textContent = state.battleQuestion?.text || "";
