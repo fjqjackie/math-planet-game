@@ -177,7 +177,7 @@ function renderSetup() {
   els.playerNameInput.value = state.profile.name;
   const gradeProgress = state.profile.progressByGrade[state.selectedGrade];
   const bestText = state.profile.bestAccuracy
-    ? `最高正确率 ${Math.round(state.profile.bestAccuracy * 100)}%`
+    ? `能力 ${state.profile.abilityScore || 0} · 本次提升 +${state.profile.lastAbilityGain || 0}`
     : "还没有挑战记录";
   els.profileSummary.textContent = gradeProgress
     ? `${state.profile.name || "小玩家"} · 当前难度 ${Math.round(gradeProgress.difficulty)} · 已挑战 ${state.profile.challenges} 次 · ${bestText}`
@@ -413,7 +413,7 @@ function showResult(reason = "round") {
       : accuracy >= 0.7
         ? rewardContext.tooEasy
           ? "这轮题偏简单，星宠只给普通能量。挑战更难的题，更容易遇到稀有星宠。"
-          : "你已经找到节奏了，下一轮会继续保持刚刚好的挑战。"
+          : `计算能力预计提升 +${rewardContext.abilityGain}。题越难、越准确、越快，星宠越稀有、战力越高。`
         : "系统会把题目拆小一点，先把能量补回来。";
   els.accuracyValue.textContent = `${Math.round(accuracy * 100)}%`;
   els.timeValue.textContent = `${avgTime} 秒`;
@@ -750,6 +750,9 @@ function createDefaultProfile() {
     challenges: 0,
     totalAnswered: 0,
     bestAccuracy: 0,
+    abilityScore: 0,
+    bestAbilityScore: 0,
+    lastAbilityGain: 0,
     history: [],
     updatedAt: "",
   };
@@ -776,10 +779,17 @@ function saveProfile() {
 }
 
 function saveProgress(accuracy, answered, avgTime = 0) {
+  const previousAbility = state.profile.abilityScore || 0;
+  const abilityScore = calculateAbilityScore(accuracy, answered, avgTime, state.targetDifficulty);
+  const abilityGain = Math.max(0, abilityScore - previousAbility);
+  state.profile.abilityScore = Math.max(previousAbility, abilityScore);
+  state.profile.bestAbilityScore = Math.max(state.profile.bestAbilityScore || 0, abilityScore);
+  state.profile.lastAbilityGain = abilityGain;
   state.profile.progressByGrade[state.selectedGrade] = {
     difficulty: state.targetDifficulty,
     mode: state.selectedMode,
     ops: Array.from(state.selectedOps),
+    abilityScore: state.profile.abilityScore,
   };
   state.profile.challenges += 1;
   state.profile.totalAnswered += answered;
@@ -792,10 +802,20 @@ function saveProgress(accuracy, answered, avgTime = 0) {
     accuracy: Math.round(accuracy * 100),
     difficulty: Math.round(state.targetDifficulty),
     avgTime,
+    abilityScore,
+    abilityGain,
     at: new Date().toISOString(),
   });
   state.profile.history = state.profile.history.slice(0, 30);
   saveProfile();
+}
+
+function calculateAbilityScore(accuracy, answered, avgTime, difficulty) {
+  const accuracyPart = Math.round(accuracy * 40);
+  const difficultyPart = Math.round(difficulty * 0.55);
+  const speedPart = Math.max(0, Math.round((18 - avgTime) * 1.8));
+  const volumePart = Math.min(10, Math.round(answered / 2));
+  return Math.max(0, accuracyPart + difficultyPart + speedPart + volumePart);
 }
 
 function renderCollectionPreview() {
@@ -840,13 +860,21 @@ function getRewardContext(accuracy, avgTime) {
   const profile = gradeProfiles[state.selectedGrade];
   const saved = state.profile.progressByGrade[state.selectedGrade]?.difficulty || profile.start;
   const tooEasy = state.targetDifficulty < saved - 6 || (accuracy >= 0.95 && avgTime <= 6 && state.targetDifficulty <= saved);
-  const challengeBonus = clamp((state.targetDifficulty - profile.start) / Math.max(1, profile.max - profile.start), 0, 1);
-  return { tooEasy, challengeBonus, savedDifficulty: saved };
+  const challengeBonus = clamp((state.targetDifficulty - profile.min) / Math.max(1, profile.max - profile.min), 0, 1);
+  const accuracyBonus = clamp((accuracy - 0.7) / 0.3, 0, 1);
+  const speedBonus = clamp((18 - avgTime) / 14, 0, 1);
+  const projectedAbility = calculateAbilityScore(accuracy, state.roundAnswers.length || 10, avgTime, state.targetDifficulty);
+  const abilityGain = Math.max(0, projectedAbility - (state.profile.abilityScore || 0));
+  const growthBonus = clamp(abilityGain / 18, 0, 1);
+  const performanceScore = challengeBonus * 0.42 + accuracyBonus * 0.34 + speedBonus * 0.24;
+  return { tooEasy, challengeBonus, accuracyBonus, speedBonus, growthBonus, performanceScore, abilityGain, projectedAbility, savedDifficulty: saved };
 }
 
 function rewardEnergyFor(creature, context) {
   const base = { common: 3, rare: 5, epic: 8, legendary: 12 }[creature.rarity] || 3;
-  return context.tooEasy ? Math.max(1, Math.floor(base / 2)) : base + Math.round(context.challengeBonus * 4);
+  return context.tooEasy
+    ? Math.max(1, Math.floor(base / 2))
+    : base + Math.round(context.performanceScore * 7) + Math.round(context.growthBonus * 4);
 }
 
 function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy, avgTime)) {
@@ -858,19 +886,21 @@ function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy
     return "epic";
   }
 
-  let legendaryChance = difficulty >= 88 ? 0.14 : difficulty >= 76 ? 0.07 : 0.02;
-  let epicChance = difficulty >= 76 ? 0.26 : difficulty >= 60 ? 0.16 : 0.06;
-  let rareChance = difficulty >= 55 ? 0.36 : 0.24;
-  legendaryChance += context.challengeBonus * 0.08;
-  epicChance += context.challengeBonus * 0.12;
-  rareChance += context.challengeBonus * 0.1;
+  let legendaryChance = 0.01 + context.performanceScore * 0.16 + context.growthBonus * 0.06;
+  let epicChance = 0.04 + context.performanceScore * 0.26 + context.growthBonus * 0.1;
+  let rareChance = 0.18 + context.performanceScore * 0.26;
 
   if (accuracy >= 0.95) {
     legendaryChance += 0.05;
     epicChance += 0.06;
   }
   if (avgTime <= 8) {
+    legendaryChance += 0.02;
     rareChance += 0.08;
+  }
+  if (context.challengeBonus < 0.35) {
+    legendaryChance = Math.min(legendaryChance, 0.02);
+    epicChance = Math.min(epicChance, 0.08);
   }
 
   const roll = Math.random();
@@ -909,7 +939,7 @@ function renderReward(reward, accuracy) {
         <span>技能：${reward.skill}</span>
         <span>${reward.power}</span>
       </div>
-      <p>${duplicateText} 获得 ${reward.energyGain} 点进化能量。${reward.tooEasy ? "这轮题低于当前水平，稀有率会降低。" : "挑战越难、正确率越高，越容易遇到高稀有度星宠。"}</p>
+      <p>${duplicateText} 获得 ${reward.energyGain} 点进化能量。${reward.tooEasy ? "这轮题低于当前水平，稀有率会降低。" : "高难度、高正确率、快速完成会提高稀有和超稀有概率。"}</p>
     </div>
   `;
 }
@@ -1047,7 +1077,7 @@ function runBattle() {
     </div>
     <div>
       <h3>${winnerName} 获胜：${winner.name}</h3>
-      <p>发动技能「${winner.skill}」，战力差 ${diff}。战力由星宠稀有度、进化等级、属性克制和最近计算表现共同决定。</p>
+      <p>发动技能「${winner.skill}」，战力差 ${diff}。算得越难、越准确、越快，星宠战力越高；进化等级和属性克制也会加成。</p>
       <div class="battle-score">
         <span>玩家 A：${scoreA}</span>
         <span>玩家 B：${scoreB}</span>
@@ -1075,17 +1105,21 @@ function learnerBattleBonus(creature) {
   const accuracy = latest.accuracy || Math.round((state.profile.bestAccuracy || 0) * 100);
   const difficulty = latest.difficulty || state.targetDifficulty;
   const avgTime = latest.avgTime || 12;
+  const abilityScore = state.profile.abilityScore || latest.abilityScore || 0;
+  const abilityGain = state.profile.lastAbilityGain || latest.abilityGain || 0;
   const accuracyBonus = Math.round(accuracy / 8);
   const difficultyBonus = Math.round(difficulty / 8);
   const speedBonus = Math.max(0, 14 - avgTime);
+  const growthBonus = Math.min(18, Math.round(abilityGain * 1.2));
+  const abilityBase = Math.round(abilityScore / 12);
   const statBonus = {
     accuracy: accuracyBonus,
     difficulty: difficultyBonus,
     speed: speedBonus,
     streak: Math.min(12, state.currentStreak * 3),
-    all: Math.round((accuracyBonus + difficultyBonus + speedBonus) / 1.6),
+    all: Math.round((accuracyBonus + difficultyBonus + speedBonus + growthBonus) / 1.5),
   }[creature.stat] || 4;
-  return Math.max(0, statBonus);
+  return Math.max(0, abilityBase + statBonus + growthBonus);
 }
 
 function elementBonus(element, opponentElement) {

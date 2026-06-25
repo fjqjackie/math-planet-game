@@ -62,6 +62,30 @@ vm.runInContext(`
   if (evolveCost(0) >= evolveCost(1)) {
     throw new Error("Evolution costs should increase by level.");
   }
+
+  const lowAbility = calculateAbilityScore(0.7, 10, 16, 24);
+  const highAbility = calculateAbilityScore(0.95, 10, 6, 64);
+  if (highAbility <= lowAbility) {
+    throw new Error("Higher accuracy, speed, and difficulty should increase ability score.");
+  }
+
+  state.profile.abilityScore = 20;
+  state.targetDifficulty = 60;
+  state.selectedGrade = 3;
+  const growthContext = getRewardContext(0.95, 6);
+  if (growthContext.growthBonus <= 0) {
+    throw new Error("Ability improvement should create reward growth bonus.");
+  }
+
+  state.profile.abilityScore = 50;
+  state.selectedGrade = 3;
+  state.targetDifficulty = 30;
+  const easyReward = getRewardContext(0.75, 16);
+  state.targetDifficulty = 68;
+  const strongReward = getRewardContext(0.98, 5);
+  if (strongReward.performanceScore <= easyReward.performanceScore) {
+    throw new Error("Harder, faster, more accurate work should produce better reward score.");
+  }
 `, context);
 
 console.log("logic tests passed");
