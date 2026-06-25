@@ -476,9 +476,14 @@ function generateQuestion(grade, difficulty) {
 }
 
 function getSkillPool(grade, difficulty) {
-  if (grade === 0) return [makeAddition, makeSubtraction];
-
   const selected = state.operationOrder.filter((op) => state.selectedOps.has(op));
+  if (grade === 0) {
+    const preschoolPool = [];
+    if (selected.includes("add")) preschoolPool.push(makeAddition);
+    if (selected.includes("sub")) preschoolPool.push(makeSubtraction);
+    return preschoolPool.length ? preschoolPool : [makeAddition];
+  }
+
   const catalog = [
     { op: "add", minGrade: 1, minDifficulty: 0, generator: makeAddition },
     { op: "sub", minGrade: 1, minDifficulty: 0, generator: makeSubtraction },
