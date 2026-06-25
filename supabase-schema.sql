@@ -5,20 +5,36 @@ create table if not exists public.battle_rooms (
   host_id text not null,
   guest_id text,
   grade integer not null default 2,
+  grade_a integer,
+  grade_b integer,
   ops text[] not null default array['add', 'sub', 'mul', 'div', 'mixed'],
+  ops_a text[],
+  ops_b text[],
   difficulty integer not null default 32,
+  difficulty_a integer,
+  difficulty_b integer,
   turn text not null default 'A' check (turn in ('A', 'B')),
   hp_a integer not null default 100,
   hp_b integer not null default 100,
   pick_a text,
   pick_b text,
   question jsonb,
+  question_side text check (question_side in ('A', 'B')),
   question_started_at timestamptz,
   winner text check (winner in ('A', 'B')),
   log text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.battle_rooms
+  add column if not exists grade_a integer,
+  add column if not exists grade_b integer,
+  add column if not exists ops_a text[],
+  add column if not exists ops_b text[],
+  add column if not exists difficulty_a integer,
+  add column if not exists difficulty_b integer,
+  add column if not exists question_side text;
 
 alter table public.battle_rooms enable row level security;
 

@@ -1032,7 +1032,7 @@ function renderRemotePanel() {
     return;
   }
   if (state.remoteRoomCode) {
-    const sideText = state.remoteSide ? `你是玩家 ${state.remoteSide}` : "等待分配玩家位置";
+    const sideText = state.remoteSide ? `你在${state.remoteSide === "A" ? "左边" : "右边"}` : "等待分配左边或右边";
     setRemoteStatus(`房间 ${state.remoteRoomCode} 已连接，${sideText}。把房间码发给好友即可加入。`);
   } else {
     setRemoteStatus(state.battleMode === "random" ? "点击随机匹配：有等待房间就加入，没有就创建一个。" : "创建房间后，把 6 位房间码发给好友。");
@@ -1054,6 +1054,43 @@ function selectedPetForRemote() {
   return state.battlePickA || getOwnedCreatures()[0]?.id || null;
 }
 
+function getBattleSideName(side) {
+  if (state.battleMode === "local") return side === "A" ? "左边" : "右边";
+  if (!state.remoteSide) return side === "A" ? "左边" : "右边";
+  return side === state.remoteSide ? "你" : "对方";
+}
+
+function getRemoteSideConfig(side) {
+  const isHostSide = side === "A";
+  const fallbackGrade = state.selectedGrade;
+  const fallbackOps = Array.from(state.selectedOps);
+  const fallbackDifficulty = state.targetDifficulty;
+  return {
+    grade: isHostSide
+      ? state.remoteRoom?.grade_a ?? state.remoteRoom?.grade ?? fallbackGrade
+      : state.remoteRoom?.grade_b ?? state.remoteRoom?.grade ?? fallbackGrade,
+    ops: isHostSide
+      ? state.remoteRoom?.ops_a ?? state.remoteRoom?.ops ?? fallbackOps
+      : state.remoteRoom?.ops_b ?? state.remoteRoom?.ops ?? fallbackOps,
+    difficulty: isHostSide
+      ? state.remoteRoom?.difficulty_a ?? state.remoteRoom?.difficulty ?? fallbackDifficulty
+      : state.remoteRoom?.difficulty_b ?? state.remoteRoom?.difficulty ?? fallbackDifficulty,
+  };
+}
+
+function adjustRemoteDifficulty(side, currentDifficulty, correct, time) {
+  const config = getRemoteSideConfig(side);
+  const profile = gradeProfiles[config.grade ?? state.selectedGrade];
+  let next = currentDifficulty;
+  if (correct) {
+    next += time <= 8 ? 2 : 1;
+    if (time <= 5) next += 1;
+  } else {
+    next -= time > 20 ? 3 : 2;
+  }
+  return clamp(next, profile.min, profile.max);
+}
+
 async function createRemoteRoom(mode = state.battleMode) {
   const client = getRemoteClient();
   const pickA = selectedPetForRemote();
@@ -1069,8 +1106,14 @@ async function createRemoteRoom(mode = state.battleMode) {
     host_id: state.remotePlayerId,
     guest_id: null,
     grade: state.selectedGrade,
+    grade_a: state.selectedGrade,
+    grade_b: null,
     ops: Array.from(state.selectedOps),
+    ops_a: Array.from(state.selectedOps),
+    ops_b: null,
     difficulty: state.targetDifficulty,
+    difficulty_a: state.targetDifficulty,
+    difficulty_b: null,
     turn: "A",
     hp_a: 100,
     hp_b: 100,
@@ -1115,7 +1158,16 @@ async function joinRemoteRoom(code, mode = state.battleMode) {
   }
   const { data, error } = await client
     .from("battle_rooms")
-    .update({ guest_id: state.remotePlayerId, pick_b: pickB, status: "ready", mode, log: "好友已加入，可以开始对战" })
+    .update({
+      guest_id: state.remotePlayerId,
+      pick_b: pickB,
+      grade_b: state.selectedGrade,
+      ops_b: Array.from(state.selectedOps),
+      difficulty_b: state.targetDifficulty,
+      status: "ready",
+      mode,
+      log: "好友已加入，可以开始对战",
+    })
     .eq("code", cleanCode)
     .select()
     .single();
@@ -1164,9 +1216,10 @@ function applyRemoteRoom(room) {
   state.remoteRoomCode = room.code;
   if (room.host_id === state.remotePlayerId) state.remoteSide = "A";
   if (room.guest_id === state.remotePlayerId) state.remoteSide = "B";
-  state.selectedGrade = room.grade ?? state.selectedGrade;
-  state.selectedOps = new Set(room.ops?.length ? room.ops : Array.from(state.selectedOps));
-  state.targetDifficulty = room.difficulty || state.targetDifficulty;
+  const ownConfig = getRemoteSideConfig(state.remoteSide || "A");
+  state.selectedGrade = ownConfig.grade ?? state.selectedGrade;
+  state.selectedOps = new Set((ownConfig.ops?.length ? ownConfig.ops : Array.from(state.selectedOps)).filter((op) => operationOptions.some((item) => item.id === op)));
+  state.targetDifficulty = ownConfig.difficulty || state.targetDifficulty;
   state.battlePickA = room.pick_a;
   state.battlePickB = room.pick_b || state.battlePickB;
   state.battleTurn = room.turn || "A";
@@ -1270,8 +1323,8 @@ function openBattle() {
 
 function renderBattle() {
   const owned = getOwnedCreatures();
-  renderBattleCard(els.playerACard, state.battlePickA, "玩家 A");
-  renderBattleCard(els.playerBCard, state.battlePickB, "玩家 B");
+  renderBattleCard(els.playerACard, state.battlePickA, "左边");
+  renderBattleCard(els.playerBCard, state.battlePickB, "右边");
   els.playerACard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "A");
   els.playerBCard.classList.toggle("selecting", !state.battleStarted && state.battleSelecting === "B");
   updateBattleIdentityLabels();
@@ -1324,7 +1377,6 @@ function renderBattleCard(element, creatureId, fallback) {
 function updateBattleIdentityLabels() {
   const isRemote = state.battleMode !== "local";
   const youSide = state.remoteSide || "A";
-  const otherSide = youSide === "A" ? "B" : "A";
   if (!els.battleSideA || !els.battleSideB) return;
 
   if (isRemote) {
@@ -1351,13 +1403,13 @@ function updateBattleIdentityLabels() {
     return;
   }
 
-  els.battleSideA.textContent = "玩家 A";
-  els.battleSideB.textContent = "玩家 B";
+  els.battleSideA.textContent = "左边";
+  els.battleSideB.textContent = "右边";
   els.battleSideA.className = "battle-side";
   els.battleSideB.className = "battle-side";
   if (els.battleHpYouLabel && els.battleHpOppLabel) {
-    els.battleHpYouLabel.textContent = "玩家 A";
-    els.battleHpOppLabel.textContent = "玩家 B";
+    els.battleHpYouLabel.textContent = "左边";
+    els.battleHpOppLabel.textContent = "右边";
     els.battleHpYouLabel.className = "";
     els.battleHpOppLabel.className = "";
   }
@@ -1393,18 +1445,24 @@ async function startRemoteMathBattle() {
     setRemoteStatus("等待另一位玩家加入并选择星宠。");
     return;
   }
-  const difficulty = state.remoteRoom.difficulty || state.targetDifficulty;
-  const question = generateQuestion(state.selectedGrade, difficulty);
+  const side = "A";
+  const config = getRemoteSideConfig(side);
+  const difficulty = config.difficulty || state.targetDifficulty;
+  const question = generateQuestion(config.grade ?? state.selectedGrade, difficulty);
   question.difficulty = difficulty;
   await pushRemoteRoom({
     status: "active",
-    turn: "A",
+    turn: side,
     hp_a: 100,
     hp_b: 100,
+    grade_a: config.grade,
+    ops_a: config.ops,
+    difficulty_a: difficulty,
     question,
+    question_side: side,
     question_started_at: new Date().toISOString(),
     winner: null,
-    log: "对战开始，玩家 A 先答题",
+    log: "对战开始，左边先答题",
   });
 }
 
@@ -1421,12 +1479,7 @@ function renderBattleQuestion() {
   const playerA = creatures.find((creature) => creature.id === state.battlePickA);
   const playerB = creatures.find((creature) => creature.id === state.battlePickB);
   const attacker = state.battleTurn === "A" ? playerA : playerB;
-  if (state.battleMode === "local") {
-    els.battleHpLabel.textContent = `轮到玩家 ${state.battleTurn}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
-  } else {
-    const currentSide = state.remoteSide === state.battleTurn ? "你" : "对方";
-    els.battleHpLabel.textContent = `轮到${currentSide}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
-  }
+  els.battleHpLabel.textContent = `轮到${getBattleSideName(state.battleTurn)}：${attacker ? evolvedName(attacker, state.profile.creatureEvolution[attacker.id] || 0) : "星宠"}`;
   els.battlePlayerHp.style.width = `${state.battlePlayerHp}%`;
   els.battleEnemyHp.style.width = `${state.battleEnemyHp}%`;
   els.battleQuestionText.textContent = state.battleQuestion?.text || "";
@@ -1469,12 +1522,12 @@ function submitBattleAnswer() {
     const damage = battleDamage(attacker, defender, time, state.battleQuestion.difficulty);
     if (defenderSide === "A") state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
     else state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
-    showBattleMessage(`玩家 ${attackerSide} 答对了，造成 ${damage} 点攻击。`, "算得越难、越准、越快，星宠攻击越强。");
+    showBattleMessage(`${getBattleSideName(attackerSide)}答对了，造成 ${damage} 点攻击。`, "算得越难、越准、越快，星宠攻击越强。");
   } else {
     const damage = counterDamage(defender, attacker);
     if (attackerSide === "A") state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
     else state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
-    showBattleMessage(`玩家 ${attackerSide} 答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`, "认真计算可以保护自己的星宠。");
+    showBattleMessage(`${getBattleSideName(attackerSide)}答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`, "认真计算可以保护自己的星宠。");
   }
 
   if (state.battleEnemyHp <= 0) return finishFriendBattle("A", correct, time);
@@ -1487,7 +1540,7 @@ function submitBattleAnswer() {
 async function submitRemoteBattleAnswer() {
   if (!state.battleStarted || !state.battleAnswer || !state.battleQuestion || !state.remoteRoom) return;
   if (state.remoteSide !== state.battleTurn) {
-    showBattleMessage(`现在轮到玩家 ${state.battleTurn}`, "等好友答完这一题，你再继续攻击。");
+    showBattleMessage(`现在轮到${getBattleSideName(state.battleTurn)}`, "等对方答完这一题，你再继续攻击。");
     return;
   }
   const playerA = creatures.find((creature) => creature.id === state.battlePickA);
@@ -1497,6 +1550,7 @@ async function submitRemoteBattleAnswer() {
   const defenderSide = attackerSide === "A" ? "B" : "A";
   const attacker = attackerSide === "A" ? playerA : playerB;
   const defender = attackerSide === "A" ? playerB : playerA;
+  const defenderConfig = getRemoteSideConfig(defenderSide);
   const answer = Number(state.battleAnswer);
   const correct = answer === state.battleQuestion.answer;
   const time = Math.max(1, Math.round((Date.now() - state.battleQuestionStartedAt) / 1000));
@@ -1508,12 +1562,12 @@ async function submitRemoteBattleAnswer() {
     const damage = battleDamage(attacker, defender, time, state.battleQuestion.difficulty);
     if (defenderSide === "A") hpA = Math.max(0, hpA - damage);
     else hpB = Math.max(0, hpB - damage);
-    log = `玩家 ${attackerSide} 答对了，造成 ${damage} 点攻击。`;
+    log = `${getBattleSideName(attackerSide)}答对了，造成 ${damage} 点攻击。`;
   } else {
     const damage = counterDamage(defender, attacker);
     if (attackerSide === "A") hpA = Math.max(0, hpA - damage);
     else hpB = Math.max(0, hpB - damage);
-    log = `玩家 ${attackerSide} 答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`;
+    log = `${getBattleSideName(attackerSide)}答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`;
   }
 
   const winner = hpB <= 0 ? "A" : hpA <= 0 ? "B" : null;
@@ -1523,23 +1577,34 @@ async function submitRemoteBattleAnswer() {
       hp_a: hpA,
       hp_b: hpB,
       winner,
-      log: `玩家 ${winner} 获胜`,
+      log: `${getBattleSideName(winner)}获胜`,
     });
     return;
   }
 
-  const difficulty = clamp((state.remoteRoom.difficulty || state.targetDifficulty) + 2, gradeProfiles[state.selectedGrade].min, gradeProfiles[state.selectedGrade].max);
-  const nextQuestion = generateQuestion(state.selectedGrade, difficulty);
-  nextQuestion.difficulty = difficulty;
-  await pushRemoteRoom({
-    difficulty,
+  const nextGrade = defenderConfig.grade ?? state.selectedGrade;
+  const nextDifficulty = adjustRemoteDifficulty(defenderSide, defenderConfig.difficulty || state.targetDifficulty, correct, time);
+  const nextQuestion = generateQuestion(nextGrade, nextDifficulty);
+  nextQuestion.difficulty = nextDifficulty;
+  const patch = {
     turn: defenderSide,
     hp_a: hpA,
     hp_b: hpB,
     question: nextQuestion,
+    question_side: defenderSide,
     question_started_at: new Date().toISOString(),
     log,
-  });
+  };
+  if (defenderSide === "A") {
+    patch.grade_a = nextGrade;
+    patch.difficulty_a = nextDifficulty;
+    patch.ops_a = defenderConfig.ops;
+  } else {
+    patch.grade_b = nextGrade;
+    patch.difficulty_b = nextDifficulty;
+    patch.ops_b = defenderConfig.ops;
+  }
+  await pushRemoteRoom(patch);
 }
 
 function showBattleMessage(message, detail = "下一位选手继续答题。") {
@@ -1567,7 +1632,7 @@ function finishFriendBattle(winnerSide, correct, time) {
       <img src="${creatureImage(winner)}" alt="${winner.name}" />
     </div>
     <div>
-      <h3>玩家 ${winnerSide} 获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
+      <h3>${getBattleSideName(winnerSide)}获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
       <p>胜者获得 ${energy} 点进化能量。对战攻击力由题目难度、答题速度、属性克制和星宠进化共同决定。</p>
       <div class="battle-score">
         <span>难度：${Math.round(difficulty)}</span>
@@ -1595,7 +1660,7 @@ function renderRemoteFinish(room) {
       <img src="${creatureImage(winner)}" alt="${winner.name}" />
     </div>
     <div>
-      <h3>玩家 ${room.winner} 获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
+      <h3>${getBattleSideName(room.winner)}获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
       <p>${wonLocally ? "你赢得了远程对战，星宠获得进化能量。" : "好友赢得了这场对战，下次可以挑战更快答题。"} 算得越快、题越难，攻击越强。</p>
       <div class="battle-score">
         <span>房间：${room.code}</span>
