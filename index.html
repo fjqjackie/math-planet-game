@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>数学星球 Demo</title>
-    <link rel="stylesheet" href="./styles.css?v=20260625-friend-battle" />
+    <link rel="stylesheet" href="./styles.css?v=20260625-remote-battle" />
   </head>
   <body>
     <main id="app" class="app">
@@ -155,6 +155,26 @@
           <h2>谁算得快，谁的星宠更强</h2>
           <p>两位选手各选一只星宠，轮流答题攻击。答得越准越快，攻击力越大。</p>
         </section>
+        <section class="battle-mode-tabs">
+          <button class="battle-mode-tab active" data-battle-mode="local">同屏对战</button>
+          <button class="battle-mode-tab" data-battle-mode="room">开房间</button>
+          <button class="battle-mode-tab" data-battle-mode="random">随机匹配</button>
+        </section>
+        <section id="remoteBattlePanel" class="remote-panel hidden">
+          <div class="remote-id-card">
+            <span>我的玩家ID</span>
+            <strong id="remotePlayerId">生成中</strong>
+          </div>
+          <div class="remote-actions">
+            <button id="createRoomButton" class="small-button">创建房间</button>
+            <div class="join-room">
+              <input id="roomCodeInput" class="player-input" maxlength="6" placeholder="输入房间码" />
+              <button id="joinRoomButton" class="small-button">加入</button>
+            </div>
+            <button id="randomMatchButton" class="small-button">随机匹配</button>
+          </div>
+          <p id="remoteStatusText" class="remote-status">配置联机服务后，可用房间码邀请朋友，或进入随机匹配池。</p>
+        </section>
         <section class="battle-arena">
           <div class="battle-slot">
             <span>玩家 A</span>
@@ -185,6 +205,8 @@
       </section>
     </main>
 
-    <script src="./app.js?v=20260625-friend-battle"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./remote-config.js?v=20260625-remote-battle"></script>
+    <script src="./app.js?v=20260625-remote-battle"></script>
   </body>
 </html>

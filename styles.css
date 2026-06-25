@@ -929,6 +929,79 @@ h2 {
   margin-bottom: 12px;
 }
 
+.battle-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: -2px 0 12px;
+}
+
+.battle-mode-tab {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #fff;
+  font-weight: 1000;
+  cursor: pointer;
+  box-shadow: var(--soft-shadow);
+}
+
+.battle-mode-tab.active {
+  border-color: rgba(46, 144, 250, 0.62);
+  color: #1849a9;
+  background: #eff8ff;
+}
+
+.remote-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #d9e9ff;
+  border-radius: 20px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: var(--soft-shadow);
+}
+
+.remote-id-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 16px;
+  background: #f3f9ff;
+  padding: 10px 12px;
+}
+
+.remote-id-card span,
+.remote-status {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.remote-id-card strong {
+  color: #1849a9;
+  font-size: 20px;
+}
+
+.remote-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.join-room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.remote-status {
+  margin: 0;
+  line-height: 1.45;
+}
+
 .battle-slot {
   display: grid;
   gap: 7px;
@@ -1663,6 +1736,16 @@ h2 {
   .dex-title strong,
   .battle-choice strong {
     font-size: 15px;
+  }
+
+  .battle-mode-tabs {
+    gap: 6px;
+  }
+
+  .battle-mode-tab {
+    min-height: 38px;
+    padding: 0 6px;
+    font-size: 13px;
   }
 
   .battle-arena {

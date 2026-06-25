@@ -29,6 +29,8 @@ const challengeModes = [
   { id: "threeMinutes", label: "3分钟挑战", seconds: 180 },
 ];
 
+const remoteConfig = (typeof window !== "undefined" && window.MATH_PLANET_SUPABASE) || {};
+
 const creatures = [
   { id: "seedling", name: "叶芽兽", icon: "🌱", rarity: "common", label: "普通", element: "草", color: "#6fd36f", accent: "#2f9d5b", skill: "嫩叶连击", power: "连胜能量", stat: "streak" },
   { id: "spark", name: "电星兔", icon: "⚡", rarity: "common", label: "普通", element: "电", color: "#ffd95a", accent: "#ff9f1c", skill: "闪电心算", power: "速度加成", stat: "speed" },
@@ -71,6 +73,7 @@ const state = {
   battlePickA: null,
   battlePickB: null,
   battleSelecting: "A",
+  battleMode: "local",
   battleTurn: "A",
   battleStarted: false,
   battlePlayerHp: 100,
@@ -79,6 +82,14 @@ const state = {
   battleQuestionStartedAt: 0,
   battleAnswer: "",
   battleTurns: 0,
+  remotePlayerId: "",
+  remoteRoomCode: "",
+  remoteSide: "",
+  remoteRoom: null,
+  remoteClient: null,
+  remoteChannel: null,
+  remoteBusy: false,
+  remoteAwardedRoom: "",
   phase: "setup",
   probeIndex: 0,
   roundIndex: 0,
@@ -113,6 +124,14 @@ const els = {
   collectionGrid: document.querySelector("#collectionGrid"),
   playerACard: document.querySelector("#playerACard"),
   playerBCard: document.querySelector("#playerBCard"),
+  battleModeTabs: typeof document.querySelectorAll === "function" ? document.querySelectorAll("[data-battle-mode]") : [],
+  remoteBattlePanel: document.querySelector("#remoteBattlePanel"),
+  remotePlayerId: document.querySelector("#remotePlayerId"),
+  createRoomButton: document.querySelector("#createRoomButton"),
+  roomCodeInput: document.querySelector("#roomCodeInput"),
+  joinRoomButton: document.querySelector("#joinRoomButton"),
+  randomMatchButton: document.querySelector("#randomMatchButton"),
+  remoteStatusText: document.querySelector("#remoteStatusText"),
   battlePicker: document.querySelector("#battlePicker"),
   battleMathPanel: document.querySelector("#battleMathPanel"),
   battleHpLabel: document.querySelector("#battleHpLabel"),
@@ -966,6 +985,212 @@ function getOwnedCreatures() {
     .filter(Boolean);
 }
 
+function getRemotePlayerId() {
+  let id = localStorage.getItem("mathPlanetPlayerId");
+  if (!id) {
+    id = `STAR-${rand(1000, 9999)}`;
+    localStorage.setItem("mathPlanetPlayerId", id);
+  }
+  return id;
+}
+
+function remoteEnabled() {
+  return Boolean(remoteConfig.url && remoteConfig.anonKey && window.supabase?.createClient);
+}
+
+function getRemoteClient() {
+  if (!remoteEnabled()) return null;
+  if (!state.remoteClient) {
+    state.remoteClient = window.supabase.createClient(remoteConfig.url, remoteConfig.anonKey);
+  }
+  return state.remoteClient;
+}
+
+function setBattleMode(mode) {
+  state.battleMode = mode;
+  els.battleModeTabs.forEach((button) => {
+    button.classList.toggle("active", button.dataset.battleMode === mode);
+  });
+  els.remoteBattlePanel.classList.toggle("hidden", mode === "local");
+  renderRemotePanel();
+  renderBattle();
+}
+
+function renderRemotePanel() {
+  state.remotePlayerId = state.remotePlayerId || getRemotePlayerId();
+  els.remotePlayerId.textContent = state.remotePlayerId;
+  if (state.battleMode === "local") return;
+  if (!remoteEnabled()) {
+    setRemoteStatus("联机服务还没配置。先按 supabase-schema.sql 建表，再填写 remote-config.js。当前仍可玩同屏对战。");
+    return;
+  }
+  if (state.remoteRoomCode) {
+    const sideText = state.remoteSide ? `你是玩家 ${state.remoteSide}` : "等待分配玩家位置";
+    setRemoteStatus(`房间 ${state.remoteRoomCode} 已连接，${sideText}。把房间码发给好友即可加入。`);
+  } else {
+    setRemoteStatus(state.battleMode === "random" ? "点击随机匹配：有等待房间就加入，没有就创建一个。" : "创建房间后，把 6 位房间码发给好友。");
+  }
+}
+
+function setRemoteStatus(message) {
+  els.remoteStatusText.textContent = message;
+}
+
+function makeRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i += 1) code += chars[rand(0, chars.length - 1)];
+  return code;
+}
+
+function selectedPetForRemote() {
+  return state.battlePickA || getOwnedCreatures()[0]?.id || null;
+}
+
+async function createRemoteRoom(mode = state.battleMode) {
+  const client = getRemoteClient();
+  const pickA = selectedPetForRemote();
+  if (!client) return renderRemotePanel();
+  if (!pickA) return setRemoteStatus("先完成一次练习获得星宠，再创建远程对战。");
+  if (state.remoteBusy) return;
+  state.remoteBusy = true;
+  const code = makeRoomCode();
+  const row = {
+    code,
+    mode,
+    status: "waiting",
+    host_id: state.remotePlayerId,
+    guest_id: null,
+    grade: state.selectedGrade,
+    ops: Array.from(state.selectedOps),
+    difficulty: state.targetDifficulty,
+    turn: "A",
+    hp_a: 100,
+    hp_b: 100,
+    pick_a: pickA,
+    pick_b: null,
+    question: null,
+    question_started_at: null,
+    winner: null,
+    log: "等待好友加入",
+  };
+  const { data, error } = await client.from("battle_rooms").insert(row).select().single();
+  state.remoteBusy = false;
+  if (error) return setRemoteStatus(`创建房间失败：${error.message}`);
+  state.remoteSide = "A";
+  await watchRemoteRoom(data.code);
+  applyRemoteRoom(data);
+}
+
+async function joinRemoteRoom(code, mode = state.battleMode) {
+  const client = getRemoteClient();
+  const pickB = selectedPetForRemote();
+  if (!client) return renderRemotePanel();
+  if (!pickB) return setRemoteStatus("先完成一次练习获得星宠，再加入远程对战。");
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) return setRemoteStatus("请输入好友发来的 6 位房间码。");
+  if (state.remoteBusy) return;
+  state.remoteBusy = true;
+  const { data: room, error: findError } = await client.from("battle_rooms").select("*").eq("code", cleanCode).maybeSingle();
+  if (findError || !room) {
+    state.remoteBusy = false;
+    return setRemoteStatus("没有找到这个房间，请检查房间码。");
+  }
+  if (room.host_id === state.remotePlayerId) {
+    state.remoteBusy = false;
+    state.remoteSide = "A";
+    await watchRemoteRoom(cleanCode);
+    return applyRemoteRoom(room);
+  }
+  if (room.guest_id && room.guest_id !== state.remotePlayerId) {
+    state.remoteBusy = false;
+    return setRemoteStatus("这个房间已经满了，换一个房间码或随机匹配。");
+  }
+  const { data, error } = await client
+    .from("battle_rooms")
+    .update({ guest_id: state.remotePlayerId, pick_b: pickB, status: "ready", mode, log: "好友已加入，可以开始对战" })
+    .eq("code", cleanCode)
+    .select()
+    .single();
+  state.remoteBusy = false;
+  if (error) return setRemoteStatus(`加入房间失败：${error.message}`);
+  state.remoteSide = "B";
+  await watchRemoteRoom(cleanCode);
+  applyRemoteRoom(data);
+}
+
+async function randomMatch() {
+  const client = getRemoteClient();
+  if (!client) return renderRemotePanel();
+  if (state.remoteBusy) return;
+  state.remoteBusy = true;
+  const { data, error } = await client
+    .from("battle_rooms")
+    .select("*")
+    .eq("mode", "random")
+    .eq("status", "waiting")
+    .is("guest_id", null)
+    .neq("host_id", state.remotePlayerId)
+    .order("updated_at", { ascending: true })
+    .limit(1);
+  state.remoteBusy = false;
+  if (error) return setRemoteStatus(`随机匹配失败：${error.message}`);
+  if (data?.length) return joinRemoteRoom(data[0].code, "random");
+  return createRemoteRoom("random");
+}
+
+async function watchRemoteRoom(code) {
+  const client = getRemoteClient();
+  if (!client) return;
+  if (state.remoteChannel) client.removeChannel(state.remoteChannel);
+  state.remoteRoomCode = code;
+  state.remoteChannel = client
+    .channel(`battle-room-${code}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "battle_rooms", filter: `code=eq.${code}` }, (payload) => {
+      if (payload.new) applyRemoteRoom(payload.new);
+    })
+    .subscribe();
+}
+
+function applyRemoteRoom(room) {
+  state.remoteRoom = room;
+  state.remoteRoomCode = room.code;
+  if (room.host_id === state.remotePlayerId) state.remoteSide = "A";
+  if (room.guest_id === state.remotePlayerId) state.remoteSide = "B";
+  state.selectedGrade = room.grade ?? state.selectedGrade;
+  state.selectedOps = new Set(room.ops?.length ? room.ops : Array.from(state.selectedOps));
+  state.targetDifficulty = room.difficulty || state.targetDifficulty;
+  state.battlePickA = room.pick_a;
+  state.battlePickB = room.pick_b || state.battlePickB;
+  state.battleTurn = room.turn || "A";
+  state.battlePlayerHp = room.hp_a ?? 100;
+  state.battleEnemyHp = room.hp_b ?? 100;
+  state.battleQuestion = room.question;
+  state.battleQuestionStartedAt = room.question_started_at ? Date.parse(room.question_started_at) : Date.now();
+  state.battleStarted = room.status === "active";
+  renderRemotePanel();
+  renderBattle();
+  if (room.status === "finished") renderRemoteFinish(room);
+  else if (room.log) showBattleMessage(room.log, room.status === "waiting" ? "等待好友加入房间。" : "准备开始或继续对战。");
+}
+
+async function pushRemoteRoom(patch) {
+  const client = getRemoteClient();
+  if (!client || !state.remoteRoomCode) return null;
+  const { data, error } = await client
+    .from("battle_rooms")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("code", state.remoteRoomCode)
+    .select()
+    .single();
+  if (error) {
+    setRemoteStatus(`同步失败：${error.message}`);
+    return null;
+  }
+  applyRemoteRoom(data);
+  return data;
+}
+
 function openCollection() {
   renderCollectionPage();
   setScreen("collection");
@@ -1046,6 +1271,7 @@ function renderBattle() {
   els.battleMathPanel.classList.toggle("hidden", !state.battleStarted);
   els.battlePicker.classList.toggle("hidden", state.battleStarted);
   els.startBattleButton.classList.toggle("hidden", state.battleStarted);
+  els.startBattleButton.textContent = state.battleMode === "local" ? "开始对战" : "开始远程对战";
 
   if (!owned.length) {
     els.battlePicker.innerHTML = `
@@ -1092,6 +1318,7 @@ function runBattle() {
 }
 
 function startMathBattle() {
+  if (state.battleMode !== "local") return startRemoteMathBattle();
   const playerA = creatures.find((creature) => creature.id === state.battlePickA);
   const playerB = creatures.find((creature) => creature.id === state.battlePickB);
   if (!playerA || !playerB) return;
@@ -1103,6 +1330,30 @@ function startMathBattle() {
   state.battleAnswer = "";
   nextBattleQuestion();
   renderBattle();
+}
+
+async function startRemoteMathBattle() {
+  if (!state.remoteRoomCode || !state.remoteRoom) {
+    setRemoteStatus("先创建房间、加入房间，或进行随机匹配。");
+    return;
+  }
+  if (!state.remoteRoom.guest_id || !state.remoteRoom.pick_a || !state.remoteRoom.pick_b) {
+    setRemoteStatus("等待另一位玩家加入并选择星宠。");
+    return;
+  }
+  const difficulty = state.remoteRoom.difficulty || state.targetDifficulty;
+  const question = generateQuestion(state.selectedGrade, difficulty);
+  question.difficulty = difficulty;
+  await pushRemoteRoom({
+    status: "active",
+    turn: "A",
+    hp_a: 100,
+    hp_b: 100,
+    question,
+    question_started_at: new Date().toISOString(),
+    winner: null,
+    log: "对战开始，玩家 A 先答题",
+  });
 }
 
 function nextBattleQuestion() {
@@ -1142,6 +1393,7 @@ function handleBattleKey(key) {
 }
 
 function submitBattleAnswer() {
+  if (state.battleMode !== "local") return submitRemoteBattleAnswer();
   if (!state.battleStarted || !state.battleAnswer || !state.battleQuestion) return;
   const playerA = creatures.find((creature) => creature.id === state.battlePickA);
   const playerB = creatures.find((creature) => creature.id === state.battlePickB);
@@ -1175,6 +1427,64 @@ function submitBattleAnswer() {
   renderBattleQuestion();
 }
 
+async function submitRemoteBattleAnswer() {
+  if (!state.battleStarted || !state.battleAnswer || !state.battleQuestion || !state.remoteRoom) return;
+  if (state.remoteSide !== state.battleTurn) {
+    showBattleMessage(`现在轮到玩家 ${state.battleTurn}`, "等好友答完这一题，你再继续攻击。");
+    return;
+  }
+  const playerA = creatures.find((creature) => creature.id === state.battlePickA);
+  const playerB = creatures.find((creature) => creature.id === state.battlePickB);
+  if (!playerA || !playerB) return;
+  const attackerSide = state.battleTurn;
+  const defenderSide = attackerSide === "A" ? "B" : "A";
+  const attacker = attackerSide === "A" ? playerA : playerB;
+  const defender = attackerSide === "A" ? playerB : playerA;
+  const answer = Number(state.battleAnswer);
+  const correct = answer === state.battleQuestion.answer;
+  const time = Math.max(1, Math.round((Date.now() - state.battleQuestionStartedAt) / 1000));
+  let hpA = state.battlePlayerHp;
+  let hpB = state.battleEnemyHp;
+  let log = "";
+
+  if (correct) {
+    const damage = battleDamage(attacker, defender, time, state.battleQuestion.difficulty);
+    if (defenderSide === "A") hpA = Math.max(0, hpA - damage);
+    else hpB = Math.max(0, hpB - damage);
+    log = `玩家 ${attackerSide} 答对了，造成 ${damage} 点攻击。`;
+  } else {
+    const damage = counterDamage(defender, attacker);
+    if (attackerSide === "A") hpA = Math.max(0, hpA - damage);
+    else hpB = Math.max(0, hpB - damage);
+    log = `玩家 ${attackerSide} 答错了，答案是 ${state.battleQuestion.answer}，受到 ${damage} 点反击。`;
+  }
+
+  const winner = hpB <= 0 ? "A" : hpA <= 0 ? "B" : null;
+  if (winner) {
+    await pushRemoteRoom({
+      status: "finished",
+      hp_a: hpA,
+      hp_b: hpB,
+      winner,
+      log: `玩家 ${winner} 获胜`,
+    });
+    return;
+  }
+
+  const difficulty = clamp((state.remoteRoom.difficulty || state.targetDifficulty) + 2, gradeProfiles[state.selectedGrade].min, gradeProfiles[state.selectedGrade].max);
+  const nextQuestion = generateQuestion(state.selectedGrade, difficulty);
+  nextQuestion.difficulty = difficulty;
+  await pushRemoteRoom({
+    difficulty,
+    turn: defenderSide,
+    hp_a: hpA,
+    hp_b: hpB,
+    question: nextQuestion,
+    question_started_at: new Date().toISOString(),
+    log,
+  });
+}
+
 function showBattleMessage(message, detail = "下一位选手继续答题。") {
   els.battleResult.className = "battle-result";
   els.battleResult.innerHTML = `<div><h3>${message}</h3><p>${detail}</p></div>`;
@@ -1205,6 +1515,34 @@ function finishFriendBattle(winnerSide, correct, time) {
       <div class="battle-score">
         <span>难度：${Math.round(difficulty)}</span>
         <span>表现：${Math.round(performance * 100)}%</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderRemoteFinish(room) {
+  const winner = room.winner === "A"
+    ? creatures.find((creature) => creature.id === room.pick_a)
+    : creatures.find((creature) => creature.id === room.pick_b);
+  if (!winner) return;
+  const wonLocally = state.remoteSide === room.winner;
+  if (wonLocally && state.remoteAwardedRoom !== room.code) {
+    const energy = 8 + Math.round((room.difficulty || state.targetDifficulty) / 10);
+    state.profile.creatureEnergy[winner.id] = (state.profile.creatureEnergy[winner.id] || 0) + energy;
+    state.remoteAwardedRoom = room.code;
+    saveProfile();
+  }
+  els.battleResult.className = `battle-result rarity-${winner.rarity}`;
+  els.battleResult.innerHTML = `
+    <div class="creature-avatar">
+      <img src="${creatureImage(winner)}" alt="${winner.name}" />
+    </div>
+    <div>
+      <h3>玩家 ${room.winner} 获胜：${evolvedName(winner, state.profile.creatureEvolution[winner.id] || 0)}</h3>
+      <p>${wonLocally ? "你赢得了远程对战，星宠获得进化能量。" : "好友赢得了这场对战，下次可以挑战更快答题。"} 算得越快、题越难，攻击越强。</p>
+      <div class="battle-score">
+        <span>房间：${room.code}</span>
+        <span>难度：${Math.round(room.difficulty || state.targetDifficulty)}</span>
       </div>
     </div>
   `;
@@ -1540,6 +1878,17 @@ function bindEvents() {
     setScreen("setup");
   });
 
+  els.battleModeTabs.forEach((button) => {
+    button.addEventListener("click", () => setBattleMode(button.dataset.battleMode));
+  });
+
+  els.createRoomButton.addEventListener("click", () => createRemoteRoom("room"));
+  els.joinRoomButton.addEventListener("click", () => joinRemoteRoom(els.roomCodeInput.value, "room"));
+  els.randomMatchButton.addEventListener("click", () => {
+    setBattleMode("random");
+    randomMatch();
+  });
+
   els.playerACard.addEventListener("click", () => {
     if (state.battleStarted) return;
     state.battleSelecting = "A";
@@ -1555,6 +1904,13 @@ function bindEvents() {
   els.battlePicker.addEventListener("click", (event) => {
     const button = event.target.closest("[data-creature]");
     if (!button) return;
+    if (state.battleMode !== "local") {
+      state.battlePickA = button.dataset.creature;
+      if (state.remoteRoomCode && state.remoteSide === "A") pushRemoteRoom({ pick_a: state.battlePickA });
+      if (state.remoteRoomCode && state.remoteSide === "B") pushRemoteRoom({ pick_b: state.battlePickA });
+      renderBattle();
+      return;
+    }
     if (state.battleSelecting === "A") {
       state.battlePickA = button.dataset.creature;
       state.battleSelecting = "B";
@@ -1598,8 +1954,10 @@ function applySavedGradeSettings() {
 }
 
 state.profile = loadProfile();
+state.remotePlayerId = getRemotePlayerId();
 applySavedGradeSettings();
 renderSetup();
+renderRemotePanel();
 renderKeypad();
 renderBattleKeypad();
 bindEvents();
