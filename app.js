@@ -894,15 +894,18 @@ function awardCreature(accuracy, avgTime, context = getRewardContext(accuracy, a
 function getRewardContext(accuracy, avgTime) {
   const profile = gradeProfiles[state.selectedGrade];
   const saved = state.profile.progressByGrade[state.selectedGrade]?.difficulty || profile.start;
-  const tooEasy = state.targetDifficulty < saved - 6 || (accuracy >= 0.95 && avgTime <= 6 && state.targetDifficulty <= saved);
   const challengeBonus = clamp((state.targetDifficulty - profile.min) / Math.max(1, profile.max - profile.min), 0, 1);
+  const masteredGradeChallenge = state.selectedGrade === 1 && challengeBonus >= 0.72 && accuracy >= 0.9;
+  const tooEasy = !masteredGradeChallenge && (state.targetDifficulty < saved - 6 || (accuracy >= 0.95 && avgTime <= 6 && state.targetDifficulty <= saved && challengeBonus < 0.7));
   const accuracyBonus = clamp((accuracy - 0.7) / 0.3, 0, 1);
   const speedBonus = clamp((18 - avgTime) / 14, 0, 1);
   const projectedAbility = calculateAbilityScore(accuracy, state.roundAnswers.length || 10, avgTime, state.targetDifficulty);
   const abilityGain = Math.max(0, projectedAbility - (state.profile.abilityScore || 0));
   const growthBonus = clamp(abilityGain / 18, 0, 1);
   const performanceScore = challengeBonus * 0.42 + accuracyBonus * 0.34 + speedBonus * 0.24;
-  return { tooEasy, challengeBonus, accuracyBonus, speedBonus, growthBonus, performanceScore, abilityGain, projectedAbility, savedDifficulty: saved };
+  const gradeMasteryBonus = gradeMasteryRewardBonus(accuracy, avgTime, challengeBonus);
+  const guaranteedLegendary = isFirstGradeSubtractionFocus() && challengeBonus >= 0.85 && accuracy >= 0.95 && avgTime <= 8;
+  return { tooEasy, challengeBonus, accuracyBonus, speedBonus, growthBonus, performanceScore, gradeMasteryBonus, guaranteedLegendary, abilityGain, projectedAbility, savedDifficulty: saved };
 }
 
 function rewardEnergyFor(creature, context) {
@@ -913,15 +916,15 @@ function rewardEnergyFor(creature, context) {
 }
 
 function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy, avgTime)) {
-  const difficulty = state.targetDifficulty;
   if (context.tooEasy) {
     const roll = Math.random();
     if (roll < 0.84) return "common";
     if (roll < 0.98) return "rare";
     return "epic";
   }
+  if (context.guaranteedLegendary) return "legendary";
 
-  let legendaryChance = 0.01 + context.performanceScore * 0.16 + context.growthBonus * 0.06;
+  let legendaryChance = 0.01 + context.performanceScore * 0.16 + context.growthBonus * 0.06 + context.gradeMasteryBonus;
   let epicChance = 0.04 + context.performanceScore * 0.26 + context.growthBonus * 0.1;
   let rareChance = 0.18 + context.performanceScore * 0.26;
 
@@ -933,6 +936,10 @@ function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy
     legendaryChance += 0.02;
     rareChance += 0.08;
   }
+  if (isFirstGradeSubtractionFocus() && accuracy >= 0.9 && avgTime <= 12 && context.challengeBonus >= 0.55) {
+    legendaryChance += 0.08;
+    epicChance += 0.08;
+  }
   if (context.challengeBonus < 0.35) {
     legendaryChance = Math.min(legendaryChance, 0.02);
     epicChance = Math.min(epicChance, 0.08);
@@ -943,6 +950,17 @@ function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy
   if (roll < legendaryChance + epicChance) return "epic";
   if (roll < legendaryChance + epicChance + rareChance) return "rare";
   return "common";
+}
+
+function gradeMasteryRewardBonus(accuracy, avgTime, challengeBonus) {
+  if (state.selectedGrade !== 1) return 0;
+  const strongFirstGradeRun = challengeBonus >= 0.75 && accuracy >= 0.92 && avgTime <= 12;
+  if (!strongFirstGradeRun) return 0;
+  return isFirstGradeSubtractionFocus() ? 0.12 : 0.06;
+}
+
+function isFirstGradeSubtractionFocus() {
+  return state.selectedGrade === 1 && state.selectedOps.has("sub") && !state.selectedOps.has("mul") && !state.selectedOps.has("div");
 }
 
 function renderReward(reward, accuracy) {

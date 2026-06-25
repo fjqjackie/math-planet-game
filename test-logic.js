@@ -86,6 +86,21 @@ vm.runInContext(`
   if (strongReward.performanceScore <= easyReward.performanceScore) {
     throw new Error("Harder, faster, more accurate work should produce better reward score.");
   }
+
+  state.selectedGrade = 1;
+  state.selectedOps = new Set(["sub"]);
+  state.targetDifficulty = 34;
+  state.profile.progressByGrade[1] = { difficulty: 34 };
+  const firstGradeSubReward = getRewardContext(0.96, 7);
+  if (firstGradeSubReward.tooEasy) {
+    throw new Error("Mastered first-grade subtraction should not be treated as too easy.");
+  }
+  if (!firstGradeSubReward.guaranteedLegendary) {
+    throw new Error("Top first-grade subtraction performance should guarantee a legendary reward.");
+  }
+  if (pickRewardRarity(0.96, 7, firstGradeSubReward) !== "legendary") {
+    throw new Error("Guaranteed legendary context should return legendary.");
+  }
 `, context);
 
 console.log("logic tests passed");
