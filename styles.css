@@ -975,6 +975,13 @@ h2 {
   background: #eff8ff;
 }
 
+.battle-pick.shadow {
+  filter: saturate(0.82);
+  background:
+    radial-gradient(circle at 80% 12%, rgba(122, 90, 248, 0.12), transparent 5rem),
+    #fff;
+}
+
 .versus {
   display: grid;
   width: 42px;
@@ -990,6 +997,57 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px;
+}
+
+.battle-math {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: var(--soft-shadow);
+}
+
+.battle-hp {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  height: 12px;
+  margin-top: 7px;
+}
+
+.battle-hp span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 180ms ease;
+}
+
+#battlePlayerHp {
+  justify-self: end;
+  background: linear-gradient(90deg, #2e90fa, #7a5af8);
+}
+
+#battleEnemyHp {
+  justify-self: start;
+  background: linear-gradient(90deg, #f04438, #f79009);
+}
+
+.battle-question {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: var(--ink);
+  font-size: clamp(34px, 9vw, 64px);
+  font-weight: 1000;
+}
+
+.battle-answer {
+  min-width: 100%;
 }
 
 .battle-choice {

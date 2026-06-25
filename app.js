@@ -69,8 +69,14 @@ const state = {
   profile: createDefaultProfile(),
   lastReward: null,
   battlePickA: null,
-  battlePickB: null,
-  battleSelecting: "A",
+  battleEnemyId: null,
+  battleStarted: false,
+  battlePlayerHp: 100,
+  battleEnemyHp: 100,
+  battleQuestion: null,
+  battleQuestionStartedAt: 0,
+  battleAnswer: "",
+  battleTurns: 0,
   phase: "setup",
   probeIndex: 0,
   roundIndex: 0,
@@ -106,6 +112,14 @@ const els = {
   playerACard: document.querySelector("#playerACard"),
   playerBCard: document.querySelector("#playerBCard"),
   battlePicker: document.querySelector("#battlePicker"),
+  battleMathPanel: document.querySelector("#battleMathPanel"),
+  battleHpLabel: document.querySelector("#battleHpLabel"),
+  battlePlayerHp: document.querySelector("#battlePlayerHp"),
+  battleEnemyHp: document.querySelector("#battleEnemyHp"),
+  battleQuestionText: document.querySelector("#battleQuestionText"),
+  battleAnswerDisplay: document.querySelector("#battleAnswerDisplay"),
+  battleKeypad: document.querySelector("#battleKeypad"),
+  battleSubmitButton: document.querySelector("#battleSubmitButton"),
   startBattleButton: document.querySelector("#startBattleButton"),
   battleResult: document.querySelector("#battleResult"),
   gradeOptions: document.querySelector("#gradeOptions"),
@@ -1007,8 +1021,12 @@ function evolveCreature(id) {
 function openBattle() {
   const owned = getOwnedCreatures();
   state.battlePickA = owned[0]?.id || null;
-  state.battlePickB = owned[1]?.id || owned[0]?.id || null;
-  state.battleSelecting = "A";
+  state.battleEnemyId = pickShadowCreature()?.id || null;
+  state.battleStarted = false;
+  state.battlePlayerHp = 100;
+  state.battleEnemyHp = 100;
+  state.battleAnswer = "";
+  state.battleTurns = 0;
   renderBattle();
   els.playerACard.classList.add("selecting");
   setScreen("battle");
@@ -1016,9 +1034,12 @@ function openBattle() {
 
 function renderBattle() {
   const owned = getOwnedCreatures();
-  renderBattleCard(els.playerACard, state.battlePickA, "玩家 A");
-  renderBattleCard(els.playerBCard, state.battlePickB, "玩家 B");
+  renderBattleCard(els.playerACard, state.battlePickA, "我的星宠");
+  renderBattleCard(els.playerBCard, state.battleEnemyId, "暗影星宠", true);
   els.battleResult.classList.add("hidden");
+  els.battleMathPanel.classList.toggle("hidden", !state.battleStarted);
+  els.battlePicker.classList.toggle("hidden", state.battleStarted);
+  els.startBattleButton.classList.toggle("hidden", state.battleStarted);
 
   if (!owned.length) {
     els.battlePicker.innerHTML = `
@@ -1041,9 +1062,10 @@ function renderBattle() {
       </button>
     `)
     .join("");
+  if (state.battleStarted) renderBattleQuestion();
 }
 
-function renderBattleCard(element, creatureId, fallback) {
+function renderBattleCard(element, creatureId, fallback, shadow = false) {
   const creature = creatures.find((item) => item.id === creatureId);
   if (!creature) {
     element.className = "battle-pick empty";
@@ -1051,39 +1073,161 @@ function renderBattleCard(element, creatureId, fallback) {
     return;
   }
 
-  element.className = `battle-pick rarity-${creature.rarity}`;
+  element.className = `battle-pick rarity-${creature.rarity}${shadow ? " shadow" : ""}`;
   element.innerHTML = `
     <img src="${creatureImage(creature)}" alt="${creature.name}" />
-    <strong>${creature.name}</strong>
+    <strong>${shadow ? `暗影${creature.name}` : evolvedName(creature, state.profile.creatureEvolution[creature.id] || 0)}</strong>
     <span>${fallback} · ${creature.label}</span>
   `;
 }
 
 function runBattle() {
-  const a = creatures.find((creature) => creature.id === state.battlePickA);
-  const b = creatures.find((creature) => creature.id === state.battlePickB);
-  if (!a || !b) return;
+  startMathBattle();
+}
 
-  const scoreA = battleScore(a, b);
-  const scoreB = battleScore(b, a);
-  const winner = scoreA >= scoreB ? a : b;
-  const winnerName = scoreA >= scoreB ? "玩家 A" : "玩家 B";
-  const diff = Math.abs(scoreA - scoreB);
+function startMathBattle() {
+  const player = creatures.find((creature) => creature.id === state.battlePickA);
+  if (!player) return;
+  state.battleEnemyId = state.battleEnemyId || pickShadowCreature()?.id;
+  state.battleStarted = true;
+  state.battlePlayerHp = 100;
+  state.battleEnemyHp = 100;
+  state.battleTurns = 0;
+  state.battleAnswer = "";
+  nextBattleQuestion();
+  renderBattle();
+}
 
-  els.battleResult.className = `battle-result rarity-${winner.rarity}`;
+function nextBattleQuestion() {
+  const base = state.profile.progressByGrade[state.selectedGrade]?.difficulty || state.targetDifficulty;
+  const difficulty = clamp(base + state.battleTurns * 2, gradeProfiles[state.selectedGrade].min, gradeProfiles[state.selectedGrade].max);
+  state.battleQuestion = generateQuestion(state.selectedGrade, difficulty);
+  state.battleQuestion.difficulty = difficulty;
+  state.battleQuestionStartedAt = Date.now();
+  state.battleAnswer = "";
+}
+
+function renderBattleQuestion() {
+  const player = creatures.find((creature) => creature.id === state.battlePickA);
+  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
+  els.battleHpLabel.textContent = `${player?.name || "我方"} vs 暗影${enemy?.name || "星宠"}`;
+  els.battlePlayerHp.style.width = `${state.battlePlayerHp}%`;
+  els.battleEnemyHp.style.width = `${state.battleEnemyHp}%`;
+  els.battleQuestionText.textContent = state.battleQuestion?.text || "";
+  els.battleAnswerDisplay.textContent = state.battleAnswer || "_";
+}
+
+function renderBattleKeypad() {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "退格"];
+  els.battleKeypad.innerHTML = keys
+    .map((key) => `<button class="key-button" data-battle-key="${key}">${key}</button>`)
+    .join("");
+}
+
+function handleBattleKey(key) {
+  if (!state.battleStarted) return;
+  if (key === "退格") state.battleAnswer = state.battleAnswer.slice(0, -1);
+  else if (key === "." && state.battleAnswer.includes(".")) return;
+  else if (key === "." && !state.battleAnswer) state.battleAnswer = "0.";
+  else if (state.battleAnswer.length < 6) state.battleAnswer += key;
+  els.battleAnswerDisplay.textContent = state.battleAnswer || "_";
+}
+
+function submitBattleAnswer() {
+  if (!state.battleStarted || !state.battleAnswer || !state.battleQuestion) return;
+  const player = creatures.find((creature) => creature.id === state.battlePickA);
+  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
+  if (!player || !enemy) return;
+
+  const answer = Number(state.battleAnswer);
+  const correct = answer === state.battleQuestion.answer;
+  const time = Math.max(1, Math.round((Date.now() - state.battleQuestionStartedAt) / 1000));
+  state.battleTurns += 1;
+
+  if (correct) {
+    const damage = battleDamage(player, enemy, time, state.battleQuestion.difficulty);
+    state.battleEnemyHp = Math.max(0, state.battleEnemyHp - damage);
+    showBattleMessage(`答对了，造成 ${damage} 点净化伤害。`);
+  } else {
+    const damage = shadowDamage(enemy, player);
+    state.battlePlayerHp = Math.max(0, state.battlePlayerHp - damage);
+    showBattleMessage(`差一点，答案是 ${state.battleQuestion.answer}。暗影反击 ${damage} 点。`);
+  }
+
+  if (state.battleEnemyHp <= 0) return finishPurifyBattle(true, correct, time);
+  if (state.battlePlayerHp <= 0) return finishPurifyBattle(false, correct, time);
+  nextBattleQuestion();
+  renderBattleQuestion();
+}
+
+function showBattleMessage(message) {
+  els.battleResult.className = "battle-result";
+  els.battleResult.innerHTML = `<div><h3>${message}</h3><p>继续答题来推进净化。</p></div>`;
+}
+
+function finishPurifyBattle(won, correct, time) {
+  const player = creatures.find((creature) => creature.id === state.battlePickA);
+  const enemy = creatures.find((creature) => creature.id === state.battleEnemyId);
+  state.battleStarted = false;
+  const difficulty = state.battleQuestion?.difficulty || state.targetDifficulty;
+  const performance = getBattlePerformance(won, correct, time, difficulty);
+  if (won && enemy) purifyCreature(enemy, performance);
+
+  els.battleResult.className = `battle-result ${won ? `rarity-${enemy.rarity}` : ""}`;
   els.battleResult.innerHTML = `
     <div class="creature-avatar">
-      <img src="${creatureImage(winner)}" alt="${winner.name}" />
+      <img src="${creatureImage(won ? enemy : player)}" alt="${won ? enemy.name : player.name}" />
     </div>
     <div>
-      <h3>${winnerName} 获胜：${winner.name}</h3>
-      <p>发动技能「${winner.skill}」，战力差 ${diff}。算得越难、越准确、越快，星宠战力越高；进化等级和属性克制也会加成。</p>
+      <h3>${won ? `净化成功：${enemy.name}` : "净化失败，再挑战一次"}</h3>
+      <p>${won ? `获得净化能量。算得越难、越准、越快，越容易把暗影星宠加入图鉴。` : `换一道更适合的题继续练，星宠不会失去能量。`}</p>
       <div class="battle-score">
-        <span>玩家 A：${scoreA}</span>
-        <span>玩家 B：${scoreB}</span>
+        <span>难度：${Math.round(difficulty)}</span>
+        <span>表现：${Math.round(performance * 100)}%</span>
       </div>
     </div>
   `;
+  renderBattle();
+}
+
+function battleDamage(player, enemy, time, difficulty) {
+  const difficultyBonus = Math.round(difficulty / 6);
+  const speedBonus = Math.max(0, 18 - time);
+  const evolutionBonus = (state.profile.creatureEvolution[player.id] || 0) * 5;
+  const element = elementBonus(player.element, enemy.element);
+  return 18 + difficultyBonus + speedBonus + evolutionBonus + element;
+}
+
+function shadowDamage(enemy, player) {
+  return 12 + Math.round(({ common: 2, rare: 6, epic: 10, legendary: 14 }[enemy.rarity] || 2) / 2) + Math.round(elementBonus(enemy.element, player.element) / 2);
+}
+
+function getBattlePerformance(won, correct, time, difficulty) {
+  const profile = gradeProfiles[state.selectedGrade];
+  const difficultyScore = clamp((difficulty - profile.min) / Math.max(1, profile.max - profile.min), 0, 1);
+  const speedScore = clamp((18 - time) / 14, 0, 1);
+  return (won ? 0.35 : 0) + (correct ? 0.25 : 0) + difficultyScore * 0.25 + speedScore * 0.15;
+}
+
+function purifyCreature(enemy, performance) {
+  const energy = 3 + Math.round(performance * 10);
+  state.profile.creatureEnergy[enemy.id] = (state.profile.creatureEnergy[enemy.id] || 0) + energy;
+  const catchChance = Math.min(0.72, 0.12 + performance * 0.48);
+  if (!state.profile.collection.includes(enemy.id) && Math.random() < catchChance) {
+    state.profile.collection.push(enemy.id);
+  }
+  saveProfile();
+}
+
+function pickShadowCreature() {
+  const score = state.profile.abilityScore || 0;
+  const pool = creatures.filter((creature) => {
+    if (score < 40) return creature.rarity === "common";
+    if (score < 75) return ["common", "rare"].includes(creature.rarity);
+    if (score < 115) return ["rare", "epic"].includes(creature.rarity);
+    return true;
+  });
+  return pick(pool.length ? pool : creatures);
 }
 
 function battleScore(creature, opponent) {
@@ -1398,33 +1542,32 @@ function bindEvents() {
   });
 
   els.playerACard.addEventListener("click", () => {
-    state.battleSelecting = "A";
+    if (state.battleStarted) return;
     els.playerACard.classList.add("selecting");
     els.playerBCard.classList.remove("selecting");
   });
 
   els.playerBCard.addEventListener("click", () => {
-    state.battleSelecting = "B";
-    els.playerBCard.classList.add("selecting");
-    els.playerACard.classList.remove("selecting");
+    if (state.battleStarted) return;
+    state.battleEnemyId = pickShadowCreature()?.id || state.battleEnemyId;
+    renderBattle();
   });
 
   els.battlePicker.addEventListener("click", (event) => {
     const button = event.target.closest("[data-creature]");
     if (!button) return;
-    if (state.battleSelecting === "A") {
-      state.battlePickA = button.dataset.creature;
-      state.battleSelecting = "B";
-    } else {
-      state.battlePickB = button.dataset.creature;
-      state.battleSelecting = "A";
-    }
+    state.battlePickA = button.dataset.creature;
     renderBattle();
-    if (state.battleSelecting === "A") els.playerACard.classList.add("selecting");
-    if (state.battleSelecting === "B") els.playerBCard.classList.add("selecting");
+    els.playerACard.classList.add("selecting");
   });
 
   els.startBattleButton.addEventListener("click", runBattle);
+  els.battleKeypad.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-battle-key]");
+    if (!button) return;
+    handleBattleKey(button.dataset.battleKey);
+  });
+  els.battleSubmitButton.addEventListener("click", submitBattleAnswer);
 
   els.keypad.addEventListener("click", (event) => {
     const button = event.target.closest("[data-key]");
@@ -1454,5 +1597,6 @@ state.profile = loadProfile();
 applySavedGradeSettings();
 renderSetup();
 renderKeypad();
+renderBattleKeypad();
 bindEvents();
 setupSpeech();
