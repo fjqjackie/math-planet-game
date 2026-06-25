@@ -127,13 +127,12 @@ h2 {
 
 .player-panel {
   margin-bottom: 16px;
-  color: #fff;
-  border: 0;
+  color: var(--ink);
+  border: 1px solid #d9e9ff;
   background:
-    radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.2), transparent 6rem),
-    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.13), transparent 8rem),
-    linear-gradient(135deg, #111827 0%, #1d2939 48%, #3538cd 100%);
-  box-shadow: 0 22px 42px rgba(17, 24, 39, 0.2);
+    radial-gradient(circle at 88% 22%, rgba(46, 144, 250, 0.18), transparent 7rem),
+    linear-gradient(135deg, #ffffff 0%, #f3f9ff 58%, #eef4ff 100%);
+  box-shadow: var(--shadow);
 }
 
 .mission-head {
@@ -145,13 +144,13 @@ h2 {
 
 .mission-head h2 {
   margin: 3px 0 8px;
-  color: #fff;
+  color: var(--ink);
   font-size: clamp(26px, 5vw, 40px);
 }
 
 .mission-head span {
   display: block;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.45;
@@ -159,7 +158,7 @@ h2 {
 
 .section-kicker {
   margin: 0;
-  color: #c7d7fe;
+  color: var(--blue-dark);
   font-size: 13px;
   font-weight: 900;
 }
@@ -169,12 +168,12 @@ h2 {
   width: 78px;
   height: 78px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(46, 144, 250, 0.2);
   border-radius: 26px;
   background:
     radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.9), transparent 1.2rem),
-    linear-gradient(135deg, #84caff, #7a5af8);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+    linear-gradient(135deg, #d1e9ff, #bdb4fe);
+  box-shadow: 0 14px 26px rgba(46, 144, 250, 0.16);
 }
 
 .mission-orb span {
@@ -193,11 +192,11 @@ h2 {
 .player-input {
   min-height: 56px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid #cfe3ff;
   border-radius: 16px;
   padding: 0 16px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.78);
   font: inherit;
   font-size: 17px;
   font-weight: 900;
@@ -205,7 +204,7 @@ h2 {
 }
 
 .player-input::placeholder {
-  color: rgba(255, 255, 255, 0.64);
+  color: #98a2b3;
 }
 
 .small-button {
@@ -214,7 +213,8 @@ h2 {
   border-radius: 16px;
   padding: 0 18px;
   color: #111827;
-  background: #fff;
+  background: #111827;
+  color: #fff;
   box-shadow: none;
   cursor: pointer;
   font-weight: 900;
@@ -234,10 +234,10 @@ h2 {
   gap: 8px;
   min-height: 56px;
   padding: 6px 12px 6px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid #d9e9ff;
   border-radius: 18px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.8);
   font-weight: 900;
   box-shadow: none;
 }
@@ -255,7 +255,7 @@ h2 {
 }
 
 .creature-chip small {
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 900;
 }
@@ -401,9 +401,9 @@ h2 {
   padding: 18px 20px;
   color: #fff;
   background:
-    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.28), transparent 1.5rem),
-    linear-gradient(135deg, #111827, #3538cd);
-  box-shadow: 0 16px 28px rgba(53, 56, 205, 0.2);
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.4), transparent 1.5rem),
+    linear-gradient(135deg, #2e90fa, #7a5af8);
+  box-shadow: 0 16px 28px rgba(46, 144, 250, 0.22);
   font-size: 24px;
 }
 
@@ -1105,5 +1105,209 @@ h2 {
 
   .creature-meta span {
     font-size: 13px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app {
+    padding: 10px 12px 86px;
+  }
+
+  .setup-screen {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+  }
+
+  .brand {
+    padding: 2px 2px 6px;
+  }
+
+  .planet {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    font-size: 21px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  .panel {
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .player-panel {
+    min-height: 0;
+    margin: 0;
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .mission-head {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+
+  .mission-head h2 {
+    margin: 1px 0 4px;
+    font-size: 22px;
+  }
+
+  .mission-head span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    font-size: 12px;
+  }
+
+  .section-kicker {
+    font-size: 11px;
+  }
+
+  .mission-orb {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+  }
+
+  .mission-orb span {
+    font-size: 24px;
+  }
+
+  .collection-preview {
+    min-height: 0;
+    margin-top: 8px;
+    padding-bottom: 0;
+  }
+
+  .creature-chip {
+    min-height: 36px;
+    padding: 4px 8px 4px 4px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  .creature-chip img {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+  }
+
+  .creature-chip small {
+    display: none;
+  }
+
+  .player-row {
+    display: grid;
+    grid-template-columns: 1fr 64px;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .player-input,
+  .small-button {
+    min-height: 40px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  .player-input {
+    padding: 0 12px;
+  }
+
+  .setup-grid {
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 8px;
+  }
+
+  .section-heading {
+    align-items: center;
+  }
+
+  .section-heading h2,
+  .panel > h2 {
+    font-size: 15px;
+  }
+
+  .section-heading span {
+    display: none;
+  }
+
+  .choice-grid {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  #gradeOptions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .choice-button {
+    min-height: 38px;
+    padding: 8px 6px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  .choice-button.active::after {
+    top: 7px;
+    right: 7px;
+    width: 6px;
+    height: 6px;
+  }
+
+  .operation-panel {
+    margin: 0;
+  }
+
+  .operation-list {
+    gap: 7px;
+    margin-top: 8px;
+    padding: 0 1px 2px;
+  }
+
+  .operation-card {
+    min-width: 78px;
+    min-height: 58px;
+    padding: 8px 7px;
+    border-radius: 14px;
+  }
+
+  .operation-card strong {
+    margin-bottom: 1px;
+    font-size: 20px;
+  }
+
+  .operation-card span {
+    font-size: 11px;
+  }
+
+  .operation-card.active::after {
+    top: 6px;
+    right: 8px;
+    font-size: 11px;
+  }
+
+  .mode-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .setup-screen > .primary-button {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    min-height: 56px;
+    padding: 0 16px;
+    border-radius: 18px;
+    font-size: 20px;
   }
 }
