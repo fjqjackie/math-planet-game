@@ -8,13 +8,6 @@ const grades = [
   { id: 6, label: "六年级" },
 ];
 
-const fontSizes = [
-  { id: "normal", label: "大", value: 68 },
-  { id: "large", label: "很大", value: 82 },
-  { id: "huge", label: "超大", value: 98 },
-  { id: "giant", label: "最大", value: 116 },
-];
-
 const operationOptions = [
   { id: "add", symbol: "+", label: "加法" },
   { id: "sub", symbol: "-", label: "减法" },
@@ -64,7 +57,6 @@ const gradeProfiles = {
 
 const state = {
   selectedGrade: 2,
-  selectedFont: "large",
   operationOrder: ["add", "sub", "mul", "div", "mixed"],
   selectedOps: new Set(["add", "sub", "mul", "div", "mixed"]),
   selectedMode: "round",
@@ -144,7 +136,6 @@ const els = {
   startBattleButton: document.querySelector("#startBattleButton"),
   battleResult: document.querySelector("#battleResult"),
   gradeOptions: document.querySelector("#gradeOptions"),
-  fontOptions: document.querySelector("#fontOptions"),
   operationOptions: document.querySelector("#operationOptions"),
   modeOptions: document.querySelector("#modeOptions"),
   startButton: document.querySelector("#startButton"),
@@ -179,13 +170,6 @@ function renderSetup() {
     .map((grade) => {
       const active = grade.id === state.selectedGrade ? " active" : "";
       return `<button class="choice-button${active}" data-grade="${grade.id}">${grade.label}</button>`;
-    })
-    .join("");
-
-  els.fontOptions.innerHTML = fontSizes
-    .map((size) => {
-      const active = size.id === state.selectedFont ? " active" : "";
-      return `<button class="choice-button${active}" data-font="${size.id}">${size.label}</button>`;
     })
     .join("");
 
@@ -248,15 +232,9 @@ function startGame() {
   state.currentStreak = 0;
   state.wrongStreak = 0;
   if (state.probeIndex < 2) state.lastAdjustment = "先来 2 道探测题";
-  applyFontSize();
   setScreen("practice");
   if (state.probeIndex >= 2) startChallengeTimerIfNeeded();
   nextQuestion();
-}
-
-function applyFontSize() {
-  const selected = fontSizes.find((item) => item.id === state.selectedFont);
-  document.documentElement.style.setProperty("--question-size", `${selected.value}px`);
 }
 
 function nextQuestion() {
@@ -1818,13 +1796,6 @@ function bindEvents() {
     if (!button) return;
     state.selectedGrade = Number(button.dataset.grade);
     applySavedGradeSettings();
-    renderSetup();
-  });
-
-  els.fontOptions.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-font]");
-    if (!button) return;
-    state.selectedFont = button.dataset.font;
     renderSetup();
   });
 
