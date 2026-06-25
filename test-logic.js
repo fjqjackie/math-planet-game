@@ -51,6 +51,12 @@ vm.runInContext(`
     throw new Error("Preschool unsupported ops should fall back to addition.");
   }
 
+  state.selectedOps = new Set(["mul"]);
+  pool = getSkillPool(0, 36);
+  if (pool.length !== 1 || pool[0].name !== "makeMultiplication") {
+    throw new Error("High difficulty preschool should transition into elementary multiplication.");
+  }
+
   state.selectedGrade = 2;
   state.targetDifficulty = 20;
   state.profile.progressByGrade[2] = { difficulty: 40 };
@@ -89,16 +95,16 @@ vm.runInContext(`
 
   state.selectedGrade = 1;
   state.selectedOps = new Set(["sub"]);
-  state.targetDifficulty = 34;
-  state.profile.progressByGrade[1] = { difficulty: 34 };
-  const firstGradeSubReward = getRewardContext(0.96, 7);
+  state.targetDifficulty = 64;
+  state.profile.progressByGrade[1] = { difficulty: 64 };
+  const firstGradeSubReward = getRewardContext(0.98, 6);
   if (firstGradeSubReward.tooEasy) {
     throw new Error("Mastered first-grade subtraction should not be treated as too easy.");
   }
   if (!firstGradeSubReward.guaranteedLegendary) {
     throw new Error("Top first-grade subtraction performance should guarantee a legendary reward.");
   }
-  if (pickRewardRarity(0.96, 7, firstGradeSubReward) !== "legendary") {
+  if (pickRewardRarity(0.98, 6, firstGradeSubReward) !== "legendary") {
     throw new Error("Guaranteed legendary context should return legendary.");
   }
 `, context);

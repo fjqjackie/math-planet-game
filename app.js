@@ -46,12 +46,12 @@ const creatures = [
 ];
 
 const gradeProfiles = {
-  0: { min: 2, start: 6, max: 14, skills: ["数数", "5以内加减", "10以内加减"] },
-  1: { min: 8, start: 18, max: 34, skills: ["加法", "减法", "加减混合"] },
-  2: { min: 16, start: 32, max: 52, skills: ["加减", "乘法", "除法", "乘加乘减"] },
-  3: { min: 28, start: 48, max: 68, skills: ["多位数", "乘除", "两步混合", "有余数除法"] },
-  4: { min: 42, start: 62, max: 82, skills: ["四则混合", "括号", "小数初步"] },
-  5: { min: 52, start: 72, max: 92, skills: ["小数四则", "分数基础", "四则混合"] },
+  0: { min: 2, start: 6, max: 60, skills: ["数数", "5以内加减", "10以内加减"] },
+  1: { min: 8, start: 18, max: 64, skills: ["加法", "减法", "加减混合"] },
+  2: { min: 16, start: 32, max: 76, skills: ["加减", "乘法", "除法", "乘加乘减"] },
+  3: { min: 28, start: 48, max: 84, skills: ["多位数", "乘除", "两步混合", "有余数除法"] },
+  4: { min: 42, start: 62, max: 92, skills: ["四则混合", "括号", "小数初步"] },
+  5: { min: 52, start: 72, max: 96, skills: ["小数四则", "分数基础", "四则混合"] },
   6: { min: 62, start: 82, max: 100, skills: ["分数小数混合", "百分数", "综合运算"] },
 };
 
@@ -337,26 +337,26 @@ function updateDifficultyAfterAnswer(response) {
     state.currentStreak += 1;
     state.wrongStreak = 0;
     if (fast) {
-      state.targetDifficulty += state.probeIndex < 2 ? 10 : 4;
-      state.lastAdjustment = "答得又快又准，题目稍微升级";
+      state.targetDifficulty += state.probeIndex < 2 ? 4 : 2;
+      state.lastAdjustment = "答得又快又准，题目小幅升级";
     } else if (slow) {
-      state.targetDifficulty += 0;
-      state.lastAdjustment = "做对了，先保持难度练熟";
+      state.targetDifficulty += 1;
+      state.lastAdjustment = "做对了，先保持轻微升级";
     } else {
-      state.targetDifficulty += state.probeIndex < 2 ? 6 : 2;
+      state.targetDifficulty += state.probeIndex < 2 ? 3 : 1;
       state.lastAdjustment = "做对了，慢慢加一点挑战";
     }
     if (state.currentStreak >= 3) {
-      state.targetDifficulty += 3;
-      state.lastAdjustment = "连胜中，解锁一点挑战";
+      state.targetDifficulty += 1;
+      state.lastAdjustment = "连胜中，难度再轻轻上调";
     }
   } else {
     state.currentStreak = 0;
     state.wrongStreak += 1;
-    state.targetDifficulty -= slow ? 10 : 6;
-    state.lastAdjustment = "这题有点难，我们拆小一点";
+    state.targetDifficulty -= slow ? 4 : 2;
+    state.lastAdjustment = "这题有点难，我们把步子放小一点";
     if (state.wrongStreak >= 2) {
-      state.targetDifficulty -= 8;
+      state.targetDifficulty -= 4;
       state.lastAdjustment = "进入能量补给，先做更顺手的题";
     }
   }
@@ -365,11 +365,11 @@ function updateDifficultyAfterAnswer(response) {
   if (recent.length >= 5) {
     const accuracy = recent.filter((item) => item.correct).length / recent.length;
     if (accuracy < 0.6) {
-      state.targetDifficulty -= 8;
+      state.targetDifficulty -= 4;
       state.lastAdjustment = "最近有点吃力，题目会友好一些";
     }
     if (accuracy > 0.9 && recent.every((item) => item.time <= 10)) {
-      state.targetDifficulty += 6;
+      state.targetDifficulty += 3;
       state.lastAdjustment = "掌握得很好，准备挑战下一档";
     }
   }
@@ -505,7 +505,14 @@ function getSkillPool(grade, difficulty) {
     const preschoolPool = [];
     if (selected.includes("add")) preschoolPool.push(makeAddition);
     if (selected.includes("sub")) preschoolPool.push(makeSubtraction);
-    return preschoolPool.length ? preschoolPool : [makeAddition];
+    if (difficulty < 18) return preschoolPool.length ? preschoolPool : [makeAddition];
+
+    const elementaryPool = [...preschoolPool];
+    if (selected.includes("mixed")) elementaryPool.push(makeAddSubMixed);
+    if (selected.includes("mul") && difficulty >= 32) elementaryPool.push(makeMultiplication);
+    if (selected.includes("div") && difficulty >= 38) elementaryPool.push(makeDivision);
+    if (selected.includes("mixed") && difficulty >= 46) elementaryPool.push(makeMulAdd);
+    return elementaryPool.length ? elementaryPool : preschoolPool.length ? preschoolPool : [makeAddition];
   }
 
   const catalog = [
