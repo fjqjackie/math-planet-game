@@ -30,16 +30,24 @@ const challengeModes = [
 ];
 
 const creatures = [
-  { id: "seedling", name: "叶芽兽", icon: "🌱", rarity: "common", label: "普通", element: "草", color: "#6fd36f", accent: "#2f9d5b", skill: "嫩叶连击", power: "+1 连胜能量" },
-  { id: "spark", name: "电星兔", icon: "⚡", rarity: "common", label: "普通", element: "电", color: "#ffd95a", accent: "#ff9f1c", skill: "闪电心算", power: "答题速度 +1" },
-  { id: "bubble", name: "泡泡鲸", icon: "🫧", rarity: "common", label: "普通", element: "水", color: "#78d7ff", accent: "#2f80ed", skill: "泡泡护盾", power: "错题鼓励 +1" },
-  { id: "ember", name: "火苗狐", icon: "🔥", rarity: "rare", label: "稀有", element: "火", color: "#ff8a34", accent: "#ef476f", skill: "火花冲刺", power: "限时挑战 +2 分" },
-  { id: "snow", name: "雪团熊", icon: "❄️", rarity: "rare", label: "稀有", element: "冰", color: "#b8f3ff", accent: "#5ab0ff", skill: "冷静思考", power: "难题提示 +1" },
-  { id: "moon", name: "月光猫", icon: "🌙", rarity: "rare", label: "稀有", element: "月", color: "#bca7ff", accent: "#6c5ce7", skill: "月影专注", power: "连续答对加星" },
-  { id: "crystal", name: "水晶龙", icon: "💎", rarity: "epic", label: "超稀有", element: "晶", color: "#9bf6ff", accent: "#7b61ff", skill: "水晶计算", power: "混合运算加成" },
-  { id: "rocket", name: "火箭龟", icon: "🚀", rarity: "epic", label: "超稀有", element: "钢", color: "#a7b8ff", accent: "#2176ff", skill: "火箭速算", power: "快速通关奖励" },
-  { id: "crown", name: "皇冠狮", icon: "👑", rarity: "legendary", label: "传说", element: "王", color: "#ffd166", accent: "#ff8a34", skill: "王者验算", power: "高难关卡徽章" },
-  { id: "star", name: "星云龙", icon: "🌟", rarity: "legendary", label: "传说", element: "星", color: "#ffb3e6", accent: "#8a4fff", skill: "星云爆发", power: "稀有掉落加成" },
+  { id: "seedling", name: "叶芽兽", icon: "🌱", rarity: "common", label: "普通", element: "草", color: "#6fd36f", accent: "#2f9d5b", skill: "嫩叶连击", power: "连胜能量", stat: "streak" },
+  { id: "spark", name: "电星兔", icon: "⚡", rarity: "common", label: "普通", element: "电", color: "#ffd95a", accent: "#ff9f1c", skill: "闪电心算", power: "速度加成", stat: "speed" },
+  { id: "bubble", name: "泡泡鲸", icon: "🫧", rarity: "common", label: "普通", element: "水", color: "#78d7ff", accent: "#2f80ed", skill: "泡泡护盾", power: "稳定加成", stat: "accuracy" },
+  { id: "pebble", name: "石鼓兽", icon: "🪨", rarity: "common", label: "普通", element: "岩", color: "#d0d5dd", accent: "#667085", skill: "稳稳验算", power: "正确率加成", stat: "accuracy" },
+  { id: "wind", name: "风铃鹿", icon: "🍃", rarity: "common", label: "普通", element: "风", color: "#a6f4c5", accent: "#12b76a", skill: "轻风速答", power: "速度加成", stat: "speed" },
+  { id: "ember", name: "火苗狐", icon: "🔥", rarity: "rare", label: "稀有", element: "火", color: "#ff8a34", accent: "#ef476f", skill: "火花冲刺", power: "限时挑战", stat: "speed" },
+  { id: "snow", name: "雪团熊", icon: "❄️", rarity: "rare", label: "稀有", element: "冰", color: "#b8f3ff", accent: "#5ab0ff", skill: "冷静思考", power: "低错率加成", stat: "accuracy" },
+  { id: "moon", name: "月光猫", icon: "🌙", rarity: "rare", label: "稀有", element: "月", color: "#bca7ff", accent: "#6c5ce7", skill: "月影专注", power: "连续答对", stat: "streak" },
+  { id: "leaffox", name: "青叶狐", icon: "🦊", rarity: "rare", label: "稀有", element: "草", color: "#86efac", accent: "#16a34a", skill: "藤蔓追击", power: "挑战难度", stat: "difficulty" },
+  { id: "tide", name: "潮汐龟", icon: "🌊", rarity: "rare", label: "稀有", element: "水", color: "#7dd3fc", accent: "#0284c7", skill: "潮汐反击", power: "后发反击", stat: "accuracy" },
+  { id: "crystal", name: "水晶龙", icon: "💎", rarity: "epic", label: "超稀有", element: "晶", color: "#9bf6ff", accent: "#7b61ff", skill: "水晶计算", power: "混合运算", stat: "difficulty" },
+  { id: "rocket", name: "火箭龟", icon: "🚀", rarity: "epic", label: "超稀有", element: "钢", color: "#a7b8ff", accent: "#2176ff", skill: "火箭速算", power: "快速通关", stat: "speed" },
+  { id: "storm", name: "雷云鹰", icon: "⛈️", rarity: "epic", label: "超稀有", element: "电", color: "#fde68a", accent: "#7c3aed", skill: "雷云连算", power: "连胜爆发", stat: "streak" },
+  { id: "aurora", name: "极光鹿", icon: "✨", rarity: "epic", label: "超稀有", element: "光", color: "#c4b5fd", accent: "#06b6d4", skill: "极光验算", power: "高正确率", stat: "accuracy" },
+  { id: "crown", name: "皇冠狮", icon: "👑", rarity: "legendary", label: "传说", element: "王", color: "#ffd166", accent: "#ff8a34", skill: "王者验算", power: "高难关卡", stat: "difficulty" },
+  { id: "star", name: "星云龙", icon: "🌟", rarity: "legendary", label: "传说", element: "星", color: "#ffb3e6", accent: "#8a4fff", skill: "星云爆发", power: "综合能力", stat: "all" },
+  { id: "time", name: "时钟鲸", icon: "⏱️", rarity: "legendary", label: "传说", element: "时", color: "#bae6fd", accent: "#312e81", skill: "时间折跃", power: "限时王者", stat: "speed" },
+  { id: "nova", name: "新星凤凰", icon: "🌠", rarity: "legendary", label: "传说", element: "星", color: "#fecdd3", accent: "#db2777", skill: "新星涅槃", power: "逆转战局", stat: "all" },
 ];
 
 const gradeProfiles = {
@@ -376,7 +384,8 @@ function showResult(reason = "round") {
   const avgTime = Math.round(answers.reduce((sum, item) => sum + item.time, 0) / answers.length);
   const profile = gradeProfiles[state.selectedGrade];
   const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : accuracy >= 0.5 ? 1 : 1;
-  const reward = accuracy >= 0.7 ? awardCreature(accuracy, avgTime) : null;
+  const rewardContext = getRewardContext(accuracy, avgTime);
+  const reward = accuracy >= 0.7 ? awardCreature(accuracy, avgTime, rewardContext) : null;
 
   if (accuracy >= 0.9 && avgTime <= 12) {
     state.targetDifficulty += 8;
@@ -395,14 +404,16 @@ function showResult(reason = "round") {
   }
 
   state.targetDifficulty = clamp(state.targetDifficulty, profile.min, profile.max);
-  saveProgress(accuracy, answers.length);
+  saveProgress(accuracy, answers.length, avgTime);
   els.resultTitle.textContent = reason === "timeup" ? "时间到" : accuracy >= 0.9 ? "三星通关" : accuracy >= 0.7 ? "稳稳过关" : "补给成功";
   els.stars.textContent = "★".repeat(stars);
   els.resultSummary.textContent =
     reason === "timeup"
       ? `本次挑战完成 ${answers.length} 题，答对 ${correctCount} 题。`
       : accuracy >= 0.7
-        ? "你已经找到节奏了，下一轮会继续保持刚刚好的挑战。"
+        ? rewardContext.tooEasy
+          ? "这轮题偏简单，星宠只给普通能量。挑战更难的题，更容易遇到稀有星宠。"
+          : "你已经找到节奏了，下一轮会继续保持刚刚好的挑战。"
         : "系统会把题目拆小一点，先把能量补回来。";
   els.accuracyValue.textContent = `${Math.round(accuracy * 100)}%`;
   els.timeValue.textContent = `${avgTime} 秒`;
@@ -733,6 +744,8 @@ function createDefaultProfile() {
   return {
     name: "小玩家",
     collection: [],
+    creatureEnergy: {},
+    creatureEvolution: {},
     progressByGrade: {},
     challenges: 0,
     totalAnswered: 0,
@@ -748,6 +761,8 @@ function loadProfile() {
     if (!raw) return createDefaultProfile();
     const profile = { ...createDefaultProfile(), ...JSON.parse(raw) };
     profile.collection = profile.collection.filter((id) => creatures.some((creature) => creature.id === id));
+    profile.creatureEnergy = profile.creatureEnergy || {};
+    profile.creatureEvolution = profile.creatureEvolution || {};
     return profile;
   } catch {
     return createDefaultProfile();
@@ -760,7 +775,7 @@ function saveProfile() {
   renderSetup();
 }
 
-function saveProgress(accuracy, answered) {
+function saveProgress(accuracy, answered, avgTime = 0) {
   state.profile.progressByGrade[state.selectedGrade] = {
     difficulty: state.targetDifficulty,
     mode: state.selectedMode,
@@ -776,6 +791,7 @@ function saveProgress(accuracy, answered) {
     answered,
     accuracy: Math.round(accuracy * 100),
     difficulty: Math.round(state.targetDifficulty),
+    avgTime,
     at: new Date().toISOString(),
   });
   state.profile.history = state.profile.history.slice(0, 30);
@@ -806,23 +822,48 @@ function renderCollectionPreview() {
     .join("");
 }
 
-function awardCreature(accuracy, avgTime) {
-  const rarity = pickRewardRarity(accuracy, avgTime);
+function awardCreature(accuracy, avgTime, context = getRewardContext(accuracy, avgTime)) {
+  const rarity = pickRewardRarity(accuracy, avgTime, context);
   const pool = creatures.filter((creature) => creature.rarity === rarity);
   const creature = pick(pool);
   const alreadyOwned = state.profile.collection.includes(creature.id);
   if (!alreadyOwned) {
     state.profile.collection.push(creature.id);
   }
-  state.lastReward = { ...creature, alreadyOwned };
+  const energyGain = alreadyOwned ? rewardEnergyFor(creature, context) : Math.max(1, Math.floor(rewardEnergyFor(creature, context) / 2));
+  state.profile.creatureEnergy[creature.id] = (state.profile.creatureEnergy[creature.id] || 0) + energyGain;
+  state.lastReward = { ...creature, alreadyOwned, energyGain, tooEasy: context.tooEasy };
   return state.lastReward;
 }
 
-function pickRewardRarity(accuracy, avgTime) {
+function getRewardContext(accuracy, avgTime) {
+  const profile = gradeProfiles[state.selectedGrade];
+  const saved = state.profile.progressByGrade[state.selectedGrade]?.difficulty || profile.start;
+  const tooEasy = state.targetDifficulty < saved - 6 || (accuracy >= 0.95 && avgTime <= 6 && state.targetDifficulty <= saved);
+  const challengeBonus = clamp((state.targetDifficulty - profile.start) / Math.max(1, profile.max - profile.start), 0, 1);
+  return { tooEasy, challengeBonus, savedDifficulty: saved };
+}
+
+function rewardEnergyFor(creature, context) {
+  const base = { common: 3, rare: 5, epic: 8, legendary: 12 }[creature.rarity] || 3;
+  return context.tooEasy ? Math.max(1, Math.floor(base / 2)) : base + Math.round(context.challengeBonus * 4);
+}
+
+function pickRewardRarity(accuracy, avgTime, context = getRewardContext(accuracy, avgTime)) {
   const difficulty = state.targetDifficulty;
+  if (context.tooEasy) {
+    const roll = Math.random();
+    if (roll < 0.84) return "common";
+    if (roll < 0.98) return "rare";
+    return "epic";
+  }
+
   let legendaryChance = difficulty >= 88 ? 0.14 : difficulty >= 76 ? 0.07 : 0.02;
   let epicChance = difficulty >= 76 ? 0.26 : difficulty >= 60 ? 0.16 : 0.06;
   let rareChance = difficulty >= 55 ? 0.36 : 0.24;
+  legendaryChance += context.challengeBonus * 0.08;
+  epicChance += context.challengeBonus * 0.12;
+  rareChance += context.challengeBonus * 0.1;
 
   if (accuracy >= 0.95) {
     legendaryChance += 0.05;
@@ -868,7 +909,7 @@ function renderReward(reward, accuracy) {
         <span>技能：${reward.skill}</span>
         <span>${reward.power}</span>
       </div>
-      <p>${duplicateText} 本轮正确率 ${Math.round(accuracy * 100)}%，难度越高越容易遇到高稀有度星宠。</p>
+      <p>${duplicateText} 获得 ${reward.energyGain} 点进化能量。${reward.tooEasy ? "这轮题低于当前水平，稀有率会降低。" : "挑战越难、正确率越高，越容易遇到高稀有度星宠。"}</p>
     </div>
   `;
 }
@@ -891,21 +932,46 @@ function renderCollectionPage() {
   els.collectionGrid.innerHTML = creatures
     .map((creature) => {
       const owned = ownedIds.has(creature.id);
+      const evolution = state.profile.creatureEvolution[creature.id] || 0;
+      const energy = state.profile.creatureEnergy[creature.id] || 0;
+      const need = evolveCost(evolution);
+      const canEvolve = owned && evolution < 3 && energy >= need;
       return `
         <article class="dex-card rarity-${creature.rarity} ${owned ? "" : "locked"}">
           <img src="${creatureImage(creature)}" alt="${creature.name}" />
           <div>
             <div class="dex-title">
-              <strong>${owned ? creature.name : "未遇见"}</strong>
-              <span>${creature.label}</span>
+              <strong>${owned ? evolvedName(creature, evolution) : "未遇见"}</strong>
+              <span>${creature.label}${owned ? ` · Lv.${evolution + 1}` : ""}</span>
             </div>
             <p>${creature.element}属性 · ${creature.skill}</p>
-            <small>${owned ? creature.power : "继续闯关有机会遇见"}</small>
+            <small>${owned ? `${creature.power} · 能量 ${energy}/${need}` : "继续闯关有机会遇见"}</small>
+            ${owned ? `<div class="energy-bar"><span style="width:${Math.min(100, (energy / need) * 100)}%"></span></div>` : ""}
+            ${canEvolve ? `<button class="evolve-button" data-evolve="${creature.id}">进化</button>` : ""}
           </div>
         </article>
       `;
     })
     .join("");
+}
+
+function evolveCost(level) {
+  return [8, 18, 36, 999][level] || 999;
+}
+
+function evolvedName(creature, level) {
+  if (!level) return creature.name;
+  return `${creature.name}${["", "·一阶", "·二阶", "·究极"][level] || ""}`;
+}
+
+function evolveCreature(id) {
+  const level = state.profile.creatureEvolution[id] || 0;
+  const cost = evolveCost(level);
+  if (level >= 3 || (state.profile.creatureEnergy[id] || 0) < cost) return;
+  state.profile.creatureEnergy[id] -= cost;
+  state.profile.creatureEvolution[id] = level + 1;
+  saveProfile();
+  renderCollectionPage();
 }
 
 function openBattle() {
@@ -968,8 +1034,8 @@ function runBattle() {
   const b = creatures.find((creature) => creature.id === state.battlePickB);
   if (!a || !b) return;
 
-  const scoreA = battleScore(a);
-  const scoreB = battleScore(b);
+  const scoreA = battleScore(a, b);
+  const scoreB = battleScore(b, a);
   const winner = scoreA >= scoreB ? a : b;
   const winnerName = scoreA >= scoreB ? "玩家 A" : "玩家 B";
   const diff = Math.abs(scoreA - scoreB);
@@ -981,7 +1047,7 @@ function runBattle() {
     </div>
     <div>
       <h3>${winnerName} 获胜：${winner.name}</h3>
-      <p>发动技能「${winner.skill}」，战力差 ${diff}。稀有度越高基础战力越强，但随机能量也可能反转战局。</p>
+      <p>发动技能「${winner.skill}」，战力差 ${diff}。战力由星宠稀有度、进化等级、属性克制和最近计算表现共同决定。</p>
       <div class="battle-score">
         <span>玩家 A：${scoreA}</span>
         <span>玩家 B：${scoreB}</span>
@@ -990,15 +1056,56 @@ function runBattle() {
   `;
 }
 
-function battleScore(creature) {
+function battleScore(creature, opponent) {
   const rarityBase = {
     common: 30,
     rare: 45,
     epic: 62,
     legendary: 78,
   }[creature.rarity] || 30;
+  const evolutionBonus = (state.profile.creatureEvolution[creature.id] || 0) * 12;
   const skillBonus = creature.skill.length + creature.element.charCodeAt(0) % 8;
-  return rarityBase + skillBonus + rand(1, 30);
+  const abilityBonus = learnerBattleBonus(creature);
+  const matchupBonus = elementBonus(creature.element, opponent.element);
+  return rarityBase + evolutionBonus + skillBonus + abilityBonus + matchupBonus + rand(1, 20);
+}
+
+function learnerBattleBonus(creature) {
+  const latest = state.profile.history[0] || {};
+  const accuracy = latest.accuracy || Math.round((state.profile.bestAccuracy || 0) * 100);
+  const difficulty = latest.difficulty || state.targetDifficulty;
+  const avgTime = latest.avgTime || 12;
+  const accuracyBonus = Math.round(accuracy / 8);
+  const difficultyBonus = Math.round(difficulty / 8);
+  const speedBonus = Math.max(0, 14 - avgTime);
+  const statBonus = {
+    accuracy: accuracyBonus,
+    difficulty: difficultyBonus,
+    speed: speedBonus,
+    streak: Math.min(12, state.currentStreak * 3),
+    all: Math.round((accuracyBonus + difficultyBonus + speedBonus) / 1.6),
+  }[creature.stat] || 4;
+  return Math.max(0, statBonus);
+}
+
+function elementBonus(element, opponentElement) {
+  const wins = {
+    水: ["火", "岩"],
+    火: ["草", "冰"],
+    草: ["水", "岩"],
+    电: ["水", "风"],
+    冰: ["草", "风"],
+    风: ["火"],
+    光: ["月"],
+    月: ["电"],
+    晶: ["王"],
+    王: ["星"],
+    星: ["晶", "时"],
+    时: ["光"],
+    钢: ["冰"],
+    岩: ["电"],
+  };
+  return wins[element]?.includes(opponentElement) ? 10 : 0;
 }
 
 function creatureImage(creature) {
@@ -1240,6 +1347,11 @@ function bindEvents() {
   els.battleButton.addEventListener("click", openBattle);
   els.collectionBackButton.addEventListener("click", () => setScreen("setup"));
   els.battleBackButton.addEventListener("click", () => setScreen("setup"));
+  els.collectionGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-evolve]");
+    if (!button) return;
+    evolveCreature(button.dataset.evolve);
+  });
   els.backButton.addEventListener("click", () => {
     stopChallengeTimer();
     setScreen("setup");

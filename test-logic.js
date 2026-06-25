@@ -50,6 +50,18 @@ vm.runInContext(`
   if (pool.length !== 1 || pool[0].name !== "makeAddition") {
     throw new Error("Preschool unsupported ops should fall back to addition.");
   }
+
+  state.selectedGrade = 2;
+  state.targetDifficulty = 20;
+  state.profile.progressByGrade[2] = { difficulty: 40 };
+  const easyContext = getRewardContext(0.98, 5);
+  if (!easyContext.tooEasy) {
+    throw new Error("Low-level practice should be marked too easy.");
+  }
+
+  if (evolveCost(0) >= evolveCost(1)) {
+    throw new Error("Evolution costs should increase by level.");
+  }
 `, context);
 
 console.log("logic tests passed");
